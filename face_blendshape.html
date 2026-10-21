@@ -1,101 +1,62 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MindAR Face Blendshape - Fros (v2)</title>
-<script type="importmap">
-{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","mindar-face-three":"https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"}}
-</script>
-<style>
-*{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111827;color:#f8fafc;font-family:system-ui,sans-serif}
-#container{position:fixed;inset:0}
-.panel{position:fixed;z-index:3;left:14px;top:14px;width:min(350px,calc(100% - 28px));max-height:calc(100% - 28px);overflow:auto;padding:16px;border:1px solid #ffffff25;border-radius:16px;background:#111827e8;backdrop-filter:blur(12px)}
-h1{font-size:18px;margin:0 0 6px}
-.desc{font-size:13px;color:#cbd5e1;margin:0 0 12px;line-height:1.5}
-.status{font-size:13px;line-height:1.5;padding:10px;border-radius:10px;background:#ffffff0d;margin-bottom:10px}
-button{width:100%;padding:11px;border:0;border-radius:10px;background:#a7f3d0;color:#064e3b;font-weight:700;cursor:pointer}
-button:disabled{opacity:.55}
-button.sub{margin-top:10px;background:#cbd5e1;color:#0f172a}
-.row{font-size:13px;display:flex;justify-content:space-between;margin-top:12px}
-.title{font-size:13px;font-weight:700;margin-top:14px;color:#a7f3d0}
-input[type=range]{width:100%;accent-color:#a7f3d0}
-select{width:100%;margin-top:6px;padding:8px;border-radius:8px;border:0;background:#1f2937;color:#f8fafc}
-label.chk{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:12px}
-#details{font-size:12px;line-height:1.5;color:#cbd5e1;max-height:110px;overflow:auto;overflow-wrap:anywhere;margin-top:10px}
-.hint{font-size:11px;line-height:1.45;color:#94a3b8;margin-bottom:0}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MindAR Blendshape</title>
+  <script type="importmap">
+    { "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
+    } }
+  </script>
+  <style>
+    body { margin: 0; }
+    #container { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+  </style>
 </head>
 <body>
-<div id="container"></div>
-<section class="panel">
-  <h1>Face Blendshape AR</h1>
-  <p class="desc">ติดตามสีหน้าด้วยกล้อง และควบคุมโมเดล Fros.glb</p>
-  <div class="status" id="status">กำลังโหลดโมเดล…</div>
-  <button id="start" disabled>กำลังเตรียมระบบ…</button>
+  <div id="container"></div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { MindARThree } from 'mindar-face-three';
 
-  <div class="title">ทิศทางโมเดล</div>
-  <select id="facing">
-    <option value="90" selected>หน้าโมเดลชี้ไปทาง -X (ค่าตามไฟล์ Fros.glb)</option>
-    <option value="-90">หน้าโมเดลชี้ไปทาง +X</option>
-    <option value="0">หน้าโมเดลชี้ไปทาง +Z</option>
-    <option value="180">หน้าโมเดลชี้ไปทาง -Z</option>
-  </select>
-  <div class="row"><label for="rotX">หมุนแกน X</label><span id="rotXVal">0°</span></div>
-  <input id="rotX" type="range" min="-180" max="180" step="5" value="0">
-  <div class="row"><label for="rotY">หมุนแกน Y</label><span id="rotYVal">90°</span></div>
-  <input id="rotY" type="range" min="-180" max="180" step="5" value="90">
-  <div class="row"><label for="rotZ">หมุนแกน Z</label><span id="rotZVal">0°</span></div>
-  <input id="rotZ" type="range" min="-180" max="180" step="5" value="0">
-  <button id="resetRotation" type="button" class="sub">รีเซ็ตมุมหมุน</button>
+    const mindar = new MindARThree({ container: document.querySelector('#container') });
+    const { renderer, scene, camera } = mindar;
+    // สร้าง environment texture แบบห้องสตูดิโอ เพื่อเพิ่มแสงและเงาสะท้อนให้โมเดล
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnvironment = new RoomEnvironment();
+    const environmentTarget = pmremGenerator.fromScene(roomEnvironment);
+    scene.environment = environmentTarget.texture;
+    roomEnvironment.dispose();
+    pmremGenerator.dispose();
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
+    const model = await new GLTFLoader().loadAsync('https://storage.googleapis.com/mediapipe-tasks/face_landmarker/raccoon_head.glb');
+    
+    model.scene.scale.setScalar(2);
+    mindar.addAnchor(1).group.add(model.scene);
+    const meshes = [];
+    model.scene.traverse(object => {
+      if (object.isMesh && object.morphTargetDictionary && object.morphTargetInfluences) meshes.push(object);
+    });
 
-  <div class="title">ขนาดและตำแหน่ง</div>
-  <div class="row"><label for="scale">ขนาดโมเดล</label><span id="scaleVal">1.00×</span></div>
-  <input id="scale" type="range" min="0.05" max="4" step="0.05" value="1">
-  <div class="row"><label for="offY">เลื่อนขึ้น/ลง</label><span id="offYVal">0.00</span></div>
-  <input id="offY" type="range" min="-2" max="2" step="0.05" value="0">
-  <div class="row"><label for="offZ">เลื่อนเข้า/ออก</label><span id="offZVal">0.00</span></div>
-  <input id="offZ" type="range" min="-2" max="2" step="0.05" value="0">
-
-  <div class="title">การขยับสีหน้า</div>
-  <div class="row"><label for="gain">ความแรงการขยับ</label><span id="gainVal">1.5×</span></div>
-  <input id="gain" type="range" min="0.5" max="3" step="0.1" value="1.5">
-  <label class="chk"><input type="checkbox" id="demo"> โหมดทดสอบ (ขยับเองโดยไม่ใช้ใบหน้า)</label>
-
-  <div id="details">ตรวจสอบโมเดล…</div>
-  <p class="hint">ต้องเปิดผ่าน HTTPS (เช่น GitHub Pages) หรือ localhost และอนุญาตกล้อง
-  ไฟล์ Fros.glb ไม่มี Morph Targets จึงใช้การขยับแบบจำลอง (ตา กะพริบ / คิ้ว / ปาก) แทน
-  ถ้าส่งออกโมเดลใหม่ที่มี Shape Keys ชื่อตรง Blendshape ระบบจะใช้ Morph Targets ให้อัตโนมัติ</p>
-</section>
-
-<script type="module">
-import * as THREE from 'three';
-import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {MindARThree} from 'mindar-face-three';
-
-const $=id=>document.getElementById(id);
-const status=$('status'), startButton=$('start'), details=$('details');
-const rot={x:$('rotX'),y:$('rotY'),z:$('rotZ')};
-const setStatus=m=>{status.textContent=m};
-const deg=THREE.MathUtils.degToRad;
-
-try{
-  const mindar=new MindARThree({container:$('container'),uiLoading:'no',uiScanning:'no',uiError:'no'});
-  const {renderer,scene,camera}=mindar;
-  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
-  scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1.7));
-  const light=new THREE.DirectionalLight(0xffffff,1.5);light.position.set(0,1,2);scene.add(light);
-
-  // ---------- โหลดโมเดล ----------
-  const gltf=await new GLTFLoader().loadAsync('./Fros.glb');
-  const model=gltf.scene;
-  model.updateMatrixWorld(true);
-
-  // 1) หา morph targets (ถ้ามี)
-  const morphMeshes=[];
-  model.traverse(o=>{if(o.isMesh&&o.morphTargetDictionary&&o.morphTargetInfluences)morphMeshes.push(o)});
-
-  // 2) ทำ pivot ให้ชิ้นส่วนใบหน้า เพื่อขยับ/ย่อ-ขยายรอบจุดกลางของชิ้นนั้น
-  const parts={eyes:[],brow:[],lipUp:[],lipDown:[],mouth:[]};
-... (121 บรรทัด)
+    await mindar.start();
+    function animate() {
+      const categories = mindar.getLatestEstimate()?.blendshapes?.categories;
+      // จับคู่ชื่อ blendshape กับ morph target ของโมเดล เช่น jawOpen, eyeBlinkLeft
+      for (const mesh of meshes) {
+        for (const { categoryName, score } of categories ?? []) {
+          const index = mesh.morphTargetDictionary[categoryName];
+          if (index !== undefined) mesh.morphTargetInfluences[index] = score;
+        }
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
