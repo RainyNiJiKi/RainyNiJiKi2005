@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Shape Face AR</title>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","mindar-face-three":"https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"}}</script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10151e;font-family:system-ui,sans-serif}#container{position:fixed;inset:0;overflow:hidden}#container video{position:absolute!important;z-index:0!important}#container canvas{position:absolute!important;z-index:1!important;pointer-events:none}
+#start{position:absolute;z-index:5;top:50%;left:50%;transform:translate(-50%,-50%);border:0;border-radius:99px;padding:14px 22px;background:#168f9d;color:white;font-size:16px;font-weight:700;cursor:pointer}
+#status{position:absolute;z-index:6;left:12px;right:12px;bottom:12px;padding:10px;border-radius:12px;color:white;background:#101827c9;font-size:13px;text-align:center}
+#panel{position:absolute;z-index:7;top:12px;left:12px;max-width:260px;padding:12px;border-radius:14px;background:#101827d9;color:white;font-size:12px}#panel label{display:grid;grid-template-columns:72px 1fr;align-items:center;gap:6px;margin:7px 0}#panel input{width:100%}
+</style></head><body>
+<div id="container"><button id="start">เริ่มใช้งานกล้อง</button><div id="status">กดเริ่มและอนุญาตให้ใช้กล้อง</div></div>
+<div id="panel"><b>ปรับตำแหน่ง Shape</b>
+<label>ขนาด <input id="scale" type="range" min=".4" max="2.2" step=".05" value="1"></label>
+<label>หมุน X <input id="rx" type="range" min="-180" max="180" value="0"></label>
+<label>หมุน Y <input id="ry" type="range" min="-180" max="180" value="0"></label>
+<label>หมุน Z <input id="rz" type="range" min="-180" max="180" value="0"></label>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MindARThree} from 'mindar-face-three';
+const container=document.querySelector('#container'), startButton=document.querySelector('#start'), statusBox=document.querySelector('#status');
+let mindar,renderer,model,started=false,raf=0;
+const smooth={}; let last=0;
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(v)?v:0));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const objects={};
+function get(name){return objects[name]||null}
+function slider(id){return Number(document.getElementById(id).value)}
+function applyTransform(){
+ if(!model)return;
+ model.scale.setScalar(slider('scale'));
+ model.rotation.set(THREE.MathUtils.degToRad(slider('rx')),THREE.MathUtils.degToRad(slider('ry')),THREE.MathUtils.degToRad(slider('rz')));
+}
+['scale','rx','ry','rz'].forEach(id=>document.getElementById(id).addEventListener('input',applyTransform));
+function animateFace(raw,dt){
+ const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.09);
+ for(const k of Object.keys(raw))smooth[k]=lerp(smooth[k]||0,raw[k]||0,a);
+ const s=smooth, val=k=>s[k]||0;
+ const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))/2);
+ const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))/2,(val('browDownLeft')+val('browDownRight'))*.42));
+ const jaw=clamp(val('jawOpen')), blinkL=clamp(val('eyeBlinkLeft')),blinkR=clamp(val('eyeBlinkRight'));
+ for(const [name,side] of [['Pupil_L','L'],['Pupil_R','R']]){
+  const o=get(name);if(!o)continue;
+  const base=o.userData.base;
+  const inward=val(side==='L'?'eyeLookInLeft':'eyeLookInRight'),outward=val(side==='L'?'eyeLookOutLeft':'eyeLookOutRight');
+  o.position.x=base.p.x+(side==='L'?inward-outward:outward-inward)*.045;
+  o.position.y=base.p.y+(val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight')-val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight'))*.035;
+  o.scale.y=base.s.y*(1-(side==='L'?blinkL:blinkR)*.8);
+ }
+ for(const [name,down,up,dir] of [['Eyebrow_L','browDownLeft','browOuterUpLeft',-1],['Eyebrow_R','browDownRight','browOuterUpRight',1]]){
+  const o=get(name);if(!o)continue;const b=o.userData.base;
+  o.position.y=b.p.y+val(up)*.035-val(down)*.055-frown*.018;
+  o.rotation.z=b.r.z+dir*(val(down)*.12-val(up)*.06+frown*.07);
+ }
+ const upper=get('Upper_lip'),lower=get('Lower_lip');
+ if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*.22-frown*.12);upper.position.y=b.p.y+smile*.025-frown*.018;}
+ if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*.15-frown*.08);lower.position.y=b.p.y-jaw*.035+smile*.018-frown*.018;lower.scale.y=b.s.y*(1+jaw*.25);}
+}
+async function start(){
+ if(started)return;started=true;startButton.hidden=true;statusBox.textContent='กำลังเปิดกล้องและโหลด untitled.glb…';
+ try{
+  mindar=new MindARThree({container,maxTrack:1,filterMinCF:.001,filterBeta:1});
+  const {renderer:r,scene,camera}=mindar;renderer=r;renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.setClearColor(0x000000,0);renderer.setClearAlpha(0);
+  scene.add(new THREE.HemisphereLight(0xffffff,0x8aa6c8,1.8));
+  const light=new THREE.DirectionalLight(0xffffff,1.5);light.position.set(-1,2,3);scene.add(light);
+  statusBox.textContent='กำลังโหลดโมเดล 3D…';
+  const gltf=await new GLTFLoader().loadAsync('./untitled.glb');model=gltf.scene;
+  model.traverse(o=>{if(o.isMesh){o.frustumCulled=false;const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{if(m){m.side=THREE.DoubleSide;m.needsUpdate=true}})}});
+  // Model-specific node names from the supplied GLB.
+  model.traverse(o=>{if(['Pupil_L','Pupil_R','Eyebrow_L','Eyebrow_R','Upper_lip','Lower_lip'].includes(o.name)){objects[o.name]=o;o.userData.base={p:o.position.clone(),s:o.scale.clone(),r:o.rotation.clone()}}});
+  const anchor=mindar.addAnchor(1);anchor.group.add(model);applyTransform();
+  await mindar.start();statusBox.textContent='ติดตามใบหน้าแล้ว — ขยับหน้า กลอกตา กะพริบตา ยิ้ม และทำหน้าบึ้งได้';
+  let categories=[];
+  const loop=now=>{raf=requestAnimationFrame(loop);const dt=last?Math.min((now-last)/1000,.05):1/60;last=now;categories=mindar.getLatestEstimate()?.blendshapes?.categories||[];if(categories.length){const raw={};categories.forEach(x=>raw[x.categoryName]=x.score);animateFace(raw,dt)}renderer.render(scene,camera)};
+  loop();
+ }catch(e){console.error(e);statusBox.textContent='เปิดไม่สำเร็จ: '+(e?.message||e)+' — ตรวจสอบว่ามีไฟล์ untitled.glb อยู่โฟลเดอร์เดียวกับ face-ar.html และเปิดผ่าน HTTPS';startButton.hidden=false;started=false;try{mindar?.stop()}catch(_){}}
+}
+startButton.addEventListener('click',start);
+window.addEventListener('beforeunload',()=>{if(raf)cancelAnimationFrame(raf);try{mindar?.stop()}catch(_){}});
+</script></body></html>
