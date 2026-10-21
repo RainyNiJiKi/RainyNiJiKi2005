@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Sage Mask Face AR</title>
+<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script><script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui;background:#101815}.panel{position:fixed;z-index:5;top:12px;left:12px;right:12px;padding:12px;border-radius:16px;background:#13251fdd;color:white}.panel p{font-size:12px;margin:4px 0}#status{font-size:12px;color:#f6d6a8}.controls{position:fixed;z-index:5;bottom:16px;left:8px;right:8px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap}button{border:0;border-radius:24px;padding:10px 13px;background:#d8e7d9;color:#17352a;font-weight:650}</style></head>
+<body><div class="panel"><b>SAGE MASK · FACE AR</b><p>อนุญาตให้ใช้กล้อง แล้วจัดใบหน้าให้อยู่กลางภาพ</p><div id="status">กำลังเตรียมระบบ…</div></div>
+<div class="controls"><button id="smaller">ลดขนาด</button><button id="bigger">เพิ่มขนาด</button><button id="up">เลื่อนขึ้น</button><button id="down">เลื่อนลง</button><button id="reset">รีเซ็ต</button></div>
+<a-scene mindar-face="autoStart: true; uiLoading: no; uiError: no; uiScanning: no" embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+<a-assets><a-asset-item id="maskModel" src="./face_mask_ar.glb"></a-asset-item></a-assets><a-camera active="true" position="0 0 0" look-controls="enabled: false"></a-camera>
+<a-entity mindar-face-target="anchorIndex: 168"><a-gltf-model id="mask" src="#maskModel" position="0 .05 .35" rotation="0 0 0" scale=".42 .42 .42"></a-gltf-model></a-entity></a-scene>
+<script>
+const model=document.querySelector('#mask'),status=document.querySelector('#status');let s=.42,y=.05;
+function apply(){model.setAttribute('scale',s+' '+s+' '+s);model.setAttribute('position','0 '+y+' .35')}
+smaller.onclick=()=>{s=Math.max(.15,s-.04);apply()};bigger.onclick=()=>{s=Math.min(.9,s+.04);apply()};up.onclick=()=>{y=Math.min(.45,y+.03);apply()};down.onclick=()=>{y=Math.max(-.35,y-.03);apply()};reset.onclick=()=>{s=.42;y=.05;apply()};
+model.addEventListener('model-loaded',()=>status.textContent='โหลดโมเดลแล้ว · ใช้ปุ่มเพื่อปรับตำแหน่ง');model.addEventListener('model-error',()=>status.textContent='โหลดโมเดลไม่ได้ ตรวจสอบไฟล์ face_mask_ar.glb');
+document.querySelector('a-scene').addEventListener('arReady',()=>status.textContent='กล้องพร้อมแล้ว · กำลังติดตามใบหน้า');document.querySelector('a-scene').addEventListener('arError',()=>status.textContent='เปิดกล้องไม่ได้ กรุณาอนุญาต Camera และเปิดผ่าน HTTPS');
+</script></body></html>
