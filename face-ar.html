@@ -42,12 +42,15 @@ function animateFace(raw,dt){
  for(const k of Object.keys(raw))smooth[k]=lerp(smooth[k]??raw[k]??0,raw[k]??0,a);
  const s=smooth, val=k=>s[k]||0;
  // Amplify subtle tracking signals while keeping values bounded.
- const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))*.5*4.0);
- const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))*.5*2.8,(val('browDownLeft')+val('browDownRight'))*1.45));
- const jaw=clamp(val('jawOpen')*5.5);
- const stretch=clamp((val('mouthStretchLeft')+val('mouthStretchRight'))*.5*2.5);
- const funnel=clamp(val('mouthFunnel')*2.2);
- const mouthOpen=clamp(Math.max(val('jawOpen')*5.2,funnel,stretch*.8));
+ const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))*.5*5.0);
+ const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))*.5*3.8,(val('browDownLeft')+val('browDownRight'))*1.15));
+ const browRaise=clamp((val('browOuterUpLeft')+val('browOuterUpRight'))*.5*2.6);
+ const cheekSmile=clamp((val('cheekSquintLeft')+val('cheekSquintRight'))*.5*3.0);
+ const mouthPress=clamp((val('mouthPressLeft')+val('mouthPressRight'))*.5*2.5);
+ const jaw=clamp(val('jawOpen')*4.8);
+ const stretch=clamp((val('mouthStretchLeft')+val('mouthStretchRight'))*.5*3.2);
+ const funnel=clamp(val('mouthFunnel')*2.8);
+ const mouthOpen=clamp(Math.max(val('jawOpen')*4.8,funnel,stretch*.72));
  const blinkL=clamp(val('eyeBlinkLeft')*1.12),blinkR=clamp(val('eyeBlinkRight')*1.12);
  // Drive compatible GLB morph targets, if available.
  const aliases={
@@ -69,20 +72,20 @@ function animateFace(raw,dt){
   const o=get(name);if(!o)continue;const b=o.userData.base;
   const lookIn=val(side==='L'?'eyeLookInLeft':'eyeLookInRight'),lookOut=val(side==='L'?'eyeLookOutLeft':'eyeLookOutRight');
   const lookUp=val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight'),lookDown=val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight');
-  o.position.x=b.p.x+(side==='L'?lookIn-lookOut:lookOut-lookIn)*.48+slider('gazeX')*.25;
-  o.position.y=b.p.y+(lookUp-lookDown)*.34+slider('gazeY')*.20;
+  o.position.x=b.p.x+(side==='L'?lookIn-lookOut:lookOut-lookIn)*.62+slider('gazeX')*.34;
+  o.position.y=b.p.y+(lookUp-lookDown)*.48+slider('gazeY')*.28;
   o.scale.y=b.s.y*(1-(side==='L'?blinkL:blinkR)*.96);
  }
  for(const [name,down,up,dir] of [['Eyebrow_L','browDownLeft','browOuterUpLeft',-1],['Eyebrow_R','browDownRight','browOuterUpRight',1]]){
   const o=get(name);if(!o)continue;const b=o.userData.base;
   const lift=val(up),lower=val(down);
-  o.position.y=b.p.y+lift*.58-lower*.55-frown*.16+smile*.07;
-  o.rotation.z=b.r.z+dir*(lower*1.12-lift*.98+frown*.48-smile*.16);
-  o.rotation.x=b.r.x-(lift+lower)*.18;
+  o.position.y=b.p.y+lift*.82-lower*.72-frown*.12+smile*.10+cheekSmile*.04;
+  o.rotation.z=b.r.z+dir*(lower*1.45-lift*1.28+frown*.42-smile*.22);
+  o.rotation.x=b.r.x-(lift+lower)*.24;
  }
  const upper=get('Upper_lip'),lower=get('Lower_lip');
- if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*1.20+stretch*.65-frown*.42);upper.scale.y=b.s.y*(1+smile*.48+mouthOpen*.24);upper.position.y=b.p.y+smile*.16+mouthOpen*.30-frown*.13;upper.position.z=b.p.z+mouthOpen*.05;}
- if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*1.0+stretch*.55-frown*.34);lower.position.y=b.p.y-jaw*.48-mouthOpen*.48+smile*.13-frown*.15;lower.position.z=b.p.z+mouthOpen*.06;lower.scale.y=b.s.y*(1+jaw*2.0+mouthOpen*1.35);}
+ if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*1.42+stretch*.78-frown*.45-mouthPress*.12);upper.scale.y=b.s.y*(1+smile*.62+mouthOpen*.30+cheekSmile*.12);upper.position.y=b.p.y+smile*.20+mouthOpen*.34-frown*.16;upper.position.z=b.p.z+mouthOpen*.06;}
+ if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*1.18+stretch*.72-frown*.38-mouthPress*.10);lower.position.y=b.p.y-jaw*.55-mouthOpen*.56+smile*.17-frown*.18;lower.position.z=b.p.z+mouthOpen*.07;lower.scale.y=b.s.y*(1+jaw*2.25+mouthOpen*1.55);}
 }async function start(){
  if(started)return;started=true;startButton.hidden=true;statusBox.textContent='กำลังเปิดกล้องและโหลด untitled.glb…';
  try{
