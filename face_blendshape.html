@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MindAR Face Blendshape - Robot Fros</title>
+<title>MindAR Face Blendshape - Fros</title>
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","mindar-face-three":"https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"}}
 </script>
@@ -15,7 +15,7 @@
 <div id="container"></div>
 <section class="panel">
 <h1>Face Blendshape AR</h1>
-<p class="desc">ทดลองติดตามสีหน้าด้วยกล้องและโมเดล Robot Fros.glb</p>
+<p class="desc">ทดลองติดตามสีหน้าด้วยกล้องและโมเดล Fros.glb</p>
 <div class="status" id="status">กำลังโหลดโมเดล…</div>
 <button id="start" disabled>กำลังเตรียมระบบ…</button>
 <div class="scale"><label for="scale">ขนาดโมเดล</label><span id="scaleVal">1.00×</span></div>
@@ -41,7 +41,7 @@ try {
   const light=new THREE.DirectionalLight(0xffffff,1.5);light.position.set(0,1,2);scene.add(light);
 
   // The model is stored beside this HTML file in the same GitHub repository.
-  const gltf=await new GLTFLoader().loadAsync('./Robot%20Fros.glb');
+  const gltf=await new GLTFLoader().loadAsync('./Fros.glb');
   modelRoot=gltf.scene;
   modelRoot.scale.setScalar(Number(scaleInput.value));
   modelRoot.traverse(obj=>{
@@ -91,7 +91,7 @@ try {
   window.addEventListener('resize',()=>renderer.setSize($('container').clientWidth,$('container').clientHeight));
 }catch(e){
   console.error(e);setStatus('เกิดข้อผิดพลาดในการโหลด: '+(e?.message||String(e)));
-  details.textContent='ตรวจสอบว่า Robot Fros.glb อยู่ที่ root ของ Repository และชื่อไฟล์ตรงกัน รวมถึงอินเทอร์เน็ตเชื่อมต่อได้';
+  details.textContent='ตรวจสอบว่า Fros.glb อยู่ที่ root ของ Repository และชื่อไฟล์ตรงกัน รวมถึงอินเทอร์เน็ตเชื่อมต่อได้';
   startButton.textContent='โหลดไม่สำเร็จ';startButton.disabled=true;
 }
 </script>
