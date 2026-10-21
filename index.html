@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#c9e8f4" />
+<title>Narisra Leaotrakulsuk — 3D Portfolio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+  :root{--ink:#163b50;--muted:#58798a;--glass:rgba(246,252,255,.64);--line:rgba(255,255,255,.78);--accent:#4d9bb8}
+  *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:#c9e8f4;color:var(--ink);font-family:Manrope,"Noto Sans Thai",sans-serif;overflow-x:hidden}
+  #scene{position:fixed;inset:0;z-index:0} canvas{display:block;width:100%;height:100%}
+  .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.12;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");mix-blend-mode:multiply}
+  .ui{position:relative;z-index:2;min-height:100vh;pointer-events:none}.ui a,.ui button,.ui .interactive{pointer-events:auto}
+  header{height:84px;padding:24px 5.2vw;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+  .brand-mark{width:27px;height:27px;border:1px solid currentColor;border-radius:50%;display:grid;place-items:center;font-family:"DM Mono";font-size:11px}
+  .header-right{display:flex;align-items:center;gap:18px}
+  .status{font:10px "DM Mono",monospace;letter-spacing:.12em;color:#426a7e}
+  .theme-switch{display:flex;padding:4px;border:1px solid rgba(255,255,255,.8);border-radius:99px;background:rgba(255,255,255,.38);backdrop-filter:blur(14px);gap:2px}
+  .theme-switch button{border:0;background:transparent;color:#41677a;border-radius:99px;padding:9px 12px;font:11px Manrope,sans-serif;cursor:pointer;transition:.25s}
+  .theme-switch button.active{background:rgba(255,255,255,.88);color:#153d53;box-shadow:0 2px 10px #4a82901c}
+  .hero{min-height:calc(100vh - 84px);padding:8vh 8.2vw 11vh;display:flex;align-items:center;position:relative}
+  .hero-copy{max-width:590px;margin-top:-2vh}
+  .eyebrow{display:flex;align-items:center;gap:12px;font:10px "DM Mono",monospace;letter-spacing:.2em;text-transform:uppercase;color:#477e94;margin-bottom:28px}
+  .eyebrow:before{content:"";height:1px;width:35px;background:#6ba5ba}
+  h1{font-size:clamp(48px,7.3vw,104px);letter-spacing:-.075em;line-height:.92;margin:0 0 26px;font-weight:600;color:#173e53}
+  h1 span{display:block;font-family:Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.07em;color:#4b91ad}
+  .subtitle{font-size:clamp(13px,1.2vw,16px);line-height:1.9;max-width:445px;color:#365d70;margin:0 0 30px}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:10px;border-radius:99px;padding:13px 19px;text-decoration:none;font-size:12px;font-weight:700;transition:transform .2s,background .2s}
+  .btn:hover{transform:translateY(-2px)}.btn-primary{background:#1d536b;color:white;box-shadow:0 8px 24px #245d7128}.btn-secondary{border:1px solid #ffffffd9;background:#ffffff55;color:#244e63;backdrop-filter:blur(10px)}
+  .hero-meta{position:absolute;left:8.2vw;bottom:34px;display:flex;gap:34px;color:#426e81;font:10px "DM Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+  .hero-meta span{display:flex;align-items:center;gap:8px}.dot{width:5px;height:5px;background:#4b9bb7;border-radius:50%;box-shadow:0 0 0 4px #4b9bb71a}
+  .scroll-note{position:absolute;right:5.2vw;bottom:35px;writing-mode:vertical-rl;font:10px "DM Mono";letter-spacing:.16em;color:#426e81;display:flex;gap:12px;align-items:center}.scroll-note:after{content:"";width:1px;height:48px;background:#5b91a5}
+  .side-note{position:absolute;right:7vw;top:33%;width:175px;text-align:right;font:10px/1.8 "DM Mono",monospace;letter-spacing:.07em;color:#3e7289}
+  .side-note strong{display:block;font-size:12px;color:#214d63;font-weight:500}
+  .section{position:relative;z-index:2;pointer-events:none;padding:90px 8.2vw 110px;min-height:70vh}
+  .section-inner{pointer-events:auto;max-width:1120px;margin:auto;border:1px solid #ffffff9c;background:rgba(241,250,255,.56);backdrop-filter:blur(22px);border-radius:28px;padding:clamp(24px,5vw,58px);box-shadow:0 22px 70px #275f7412}
+  .section-kicker{font:10px "DM Mono";letter-spacing:.18em;color:#52859a;text-transform:uppercase;margin-bottom:16px}
+  h2{font-size:clamp(28px,4vw,48px);letter-spacing:-.055em;line-height:1.1;margin:0 0 22px;font-weight:600}
+  .about-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:44px;align-items:start}
+  .about-copy{font-size:14px;line-height:2;color:#3c6173;max-width:610px}
+  .facts{display:grid;gap:10px}.fact{border-top:1px solid #9fc7d34f;padding:13px 0;display:flex;justify-content:space-between;gap:18px;font-size:12px}.fact span:first-child{color:#6a8b9a}.fact span:last-child{text-align:right;font-weight:700}
+  .project-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:30px}
+  .project{min-height:190px;border:1px solid #ffffffc9;border-radius:18px;background:linear-gradient(145deg,#ffffff88,#c6e6ef62);padding:20px;display:flex;flex-direction:column;justify-content:space-between;transition:.25s}
+  .project:hover{transform:translateY(-4px);background:#ffffffa8}
+  .project-num{font:10px "DM Mono";color:#5c91a5}.project h3{font-size:17px;margin:18px 0 7px;letter-spacing:-.03em}.project p{font-size:11px;line-height:1.7;color:#5b7b8b;margin:0}.tag{font:9px "DM Mono";color:#387b96;letter-spacing:.08em;text-transform:uppercase;margin-top:20px}
+  .lab-row{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:30px}
+  .lab-card{padding:22px;border-radius:18px;background:#e5f5fa8c;border:1px solid #fff;min-height:160px}
+  .lab-card h3{font-size:15px;margin:0 0 10px}.lab-card p{font-size:12px;line-height:1.8;color:#56798b;margin:0 0 15px}
+  .lab-label{font:10px "DM Mono";color:#4c8da4;letter-spacing:.12em}
+  .sim-controls{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-top:22px;padding-top:18px;border-top:1px solid #9fc7d34f}
+  .sim-controls label{font-size:11px;color:#537889;display:flex;gap:12px;align-items:center}
+  input[type=range]{accent-color:#4b95b1;width:120px}
+  .small-button{border:1px solid #ffffff;background:#ffffff8a;color:#28566b;padding:9px 13px;border-radius:99px;font:11px Manrope;cursor:pointer}
+  footer{position:relative;z-index:2;padding:20px 8.2vw 40px;display:flex;justify-content:space-between;color:#47788c;font:10px "DM Mono";letter-spacing:.08em}
+  .loading{position:fixed;z-index:5;inset:0;background:#d5edf5;display:grid;place-items:center;transition:opacity .8s,visibility .8s;color:#27556b;font:11px "DM Mono";letter-spacing:.18em}
+  .loading.hide{opacity:0;visibility:hidden}.loader-line{height:2px;width:140px;background:#a4cfdd;margin:18px auto 0;overflow:hidden}.loader-line:after{content:"";display:block;height:100%;width:45%;background:#3d8ca8;animation:load 1.1s ease-in-out infinite alternate}@keyframes load{from{transform:translateX(0)}to{transform:translateX(125px)}}
+  #model-status{font:10px "DM Mono";color:#5c8799}
+  @media(max-width:760px){header{padding:18px 5vw;height:74px}.status{display:none}.hero{padding:9vh 7vw 100px;align-items:flex-start}.hero-copy{margin-top:6vh;max-width:90%}h1{font-size:clamp(48px,14vw,78px)}.side-note{top:auto;bottom:100px;right:7vw;width:120px;font-size:9px}.hero-meta{left:7vw;bottom:28px;gap:16px;font-size:8px}.scroll-note{display:none}.section{padding:40px 5vw 70px}.about-grid,.lab-row{grid-template-columns:1fr;gap:20px}.project-grid{grid-template-columns:1fr}.project{min-height:145px}.theme-switch button{padding:8px 9px;font-size:10px}.brand{font-size:10px}footer{padding:15px 5vw 28px;gap:20px;flex-wrap:wrap}}
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="scene" aria-label="Interactive Three.js watercolor ocean scene"></div>
+<div class="grain"></div>
+<div class="loading" id="loading"><div>BUILDING A LITTLE WORLD<div class="loader-line"></div></div></div>
+<div class="ui">
+<header>
+  <div class="brand"><span class="brand-mark">N</span> NARISRA / DIGITAL WORLDS</div>
+  <div class="header-right">
+    <span class="status">CREATIVE PORTFOLIO · 2026</span>
+    <div class="theme-switch interactive" role="group" aria-label="เปลี่ยนช่วงเวลา">
+      <button data-theme="morning" class="active">☼ เช้า</button><button data-theme="evening">◒ เย็น</button><button data-theme="night">☾ กลางคืน</button>
+    </div>
+  </div>
+</header>
+<main>
+<section class="hero">
+  <div class="hero-copy">
+    <div class="eyebrow">3D ART · DIGITAL MEDIA · INTERACTIVE</div>
+    <h1>Narisra <span>Leaotrakulsuk</span></h1>
+    <p class="subtitle">สวัสดีค่ะ — ฉันคือนักศึกษาด้านการออกแบบสื่อดิจิทัล ผู้หลงใหลในการสร้างโลกสามมิติ แสง วัสดุ และประสบการณ์อินเทอร์แอคทีฟที่ทำให้จินตนาการมีชีวิต</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#work">สำรวจผลงาน <span>↗</span></a>
+      <a class="btn btn-secondary" href="#about">รู้จักฉัน <span>↓</span></a>
+    </div>
+  </div>
+  <div class="side-note"><strong>AN OCEAN OF IDEAS</strong>Move your cursor to stir the sky.<br>Drag to explore the scene.</div>
+  <div class="hero-meta"><span><i class="dot"></i> AVAILABLE FOR OPPORTUNITIES</span><span>THAILAND · 2026</span></div>
+  <div class="scroll-note">SCROLL TO EXPLORE</div>
+</section>
+<section class="section" id="about">
+  <div class="section-inner">
+    <div class="section-kicker">01 / ABOUT ME</div>
+    <div class="about-grid">
+      <div><h2>Designing worlds,<br><em>one detail at a time.</em></h2>
+      <p class="about-copy">ฉันชื่อ <b>Narisra Leaotrakulsuk</b> กำลังศึกษาอยู่ที่มหาวิทยาลัยเทคโนโลยีราชมงคลศาลายา คณะสถาปัตยกรรมและการออกแบบ สาขาการออกแบบสื่อดิจิทัล สนใจงาน 3D Modeling, Material & Lighting, Animation และการพัฒนา Interactive Experience โดยชอบทดลองเทคนิคใหม่ ๆ และผสมผสานศิลปะเข้ากับเทคโนโลยี</p></div>
+      <div class="facts">
+        <div class="fact"><span>EDUCATION</span><span>Digital Media Design</span></div>
+        <div class="fact"><span>UNIVERSITY</span><span>RMUT Salaya</span></div>
+        <div class="fact"><span>FOCUS</span><span>3D · Animation · WebGL</span></div>
+        <div class="fact"><span>TOOLS</span><span>Blender · Three.js</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section" id="work">
+  <div class="section-inner">
+    <div class="section-kicker">02 / SELECTED PRACTICE</div>
+    <h2>Curiosity becomes creation.</h2>
+    <p class="about-copy">ตัวอย่างหมวดผลงานที่อยากนำเสนอ — สามารถเปลี่ยนชื่อและรายละเอียดให้ตรงกับผลงานจริงของคุณได้</p>
+    <div class="project-grid">
+      <article class="project"><div class="project-num">PROJECT / 001</div><div><h3>3D Object & Materials</h3><p>สำรวจรูปทรง พื้นผิว และแสงด้วยวัสดุแบบ PBR</p><div class="tag">GLTF · PBR · LIGHTING</div></div></article>
+      <article class="project"><div class="project-num">PROJECT / 002</div><div><h3>World in Motion</h3><p>สร้างบรรยากาศและการเคลื่อนไหวให้โลกดิจิทัลมีชีวิต</p><div class="tag">ANIMATION · STORYTELLING</div></div></article>
+      <article class="project"><div class="project-num">PROJECT / 003</div><div><h3>Interactive Experiments</h3><p>ทดลองปฏิสัมพันธ์ระหว่างผู้ชม เมาส์ และ shader</p><div class="tag">WEBGL · GLSL · INTERACTION</div></div></article>
+    </div>
+  </div>
+</section>
+<section class="section" id="lab">
+  <div class="section-inner">
+    <div class="section-kicker">03 / REAL-TIME PLAYGROUND</div>
+    <h2>A small study of<br><em>motion & atmosphere.</em></h2>
+    <div class="lab-row">
+      <div class="lab-card"><div class="lab-label">01 — GLTF / PBR</div><h3>Material study</h3><p>โมเดลตัวอย่างจาก Khronos glTF Sample Assets แสดงวัสดุและการสะท้อนแสงแบบ PBR หมุนกล้องด้วยเมาส์เพื่อสำรวจรูปทรง</p><div id="model-status">MODEL: LOADING…</div></div>
+      <div class="lab-card"><div class="lab-label">02 — GLSL / FLOCK</div><h3>Birds in the breeze</h3><p>ฝูงอนุภาคเคลื่อนที่ด้วย vertex shader โดยรับอิทธิพลจากตำแหน่งเมาส์ จำลองการเคลื่อนไหวร่วมกันในบรรยากาศ</p><div class="lab-label">GPU PARTICLES · PROCEDURAL WAVES</div></div>
+    </div>
+    <div class="sim-controls">
+      <label>WIND / ลม <input id="wind" type="range" min="0" max="2" step=".1" value="1"><span id="wind-value">1.0×</span></label>
+      <label>WAVE / คลื่น <input id="wave" type="range" min=".2" max="2" step=".1" value="1"><span id="wave-value">1.0×</span></label>
+      <button class="small-button" id="reset-view">↺ Reset camera</button>
+    </div>
+  </div>
+</section>
+</main>
+<footer><span>© 2026 NARISRA LEAOTRAKULSUK</span><span>MADE WITH CURIOSITY & THREE.JS</span></footer>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const container=document.querySelector('#scene');
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,180);
+camera.position.set(0,5.8,15.5);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.1;
+container.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=.045;controls.enablePan=false;
+controls.minDistance=7;controls.maxDistance=27;controls.maxPolarAngle=Math.PI*.48;
+controls.target.set(0,2.1,0);controls.update();
+scene.add(new THREE.HemisphereLight(0xe9f8ff,0x688da3,1.65));
+const sun=new THREE.DirectionalLight(0xfff1d9,2.6);sun.position.set(-6,10,5);scene.add(sun);
+const fill=new THREE.DirectionalLight(0x9adcf4,1.4);fill.position.set(7,4,-5);scene.add(fill);
+
+const uniforms={uTime:{value:0},uMouse:{value:new THREE.Vector2(.5,.5)},uWind:{value:1},uWave:{value:1},uTop:{value:new THREE.Color('#8ac9e5')},uHorizon:{value:new THREE.Color('#f4f5e9')},uCloud:{value:new THREE.Color('#ffffff')},uSea:{value:new THREE.Color('#4d9fbd')},uDeep:{value:new THREE.Color('#246b8c')},uSun:{value:new THREE.Vector2(-.48,.18)},uNight:{value:0}};
+const skyGeo=new THREE.SphereGeometry(90,48,32);
+const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms,vertexShader:`
+varying vec3 vPos; varying vec3 vWorld;
+void main(){vPos=position; vec4 wp=modelMatrix*vec4(position,1.0);vWorld=wp.xyz;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}
+`,fragmentShader:`
+precision highp float; varying vec3 vPos; varying vec3 vWorld;
+uniform float uTime;uniform vec2 uMouse;uniform float uWind;uniform vec3 uTop;uniform vec3 uHorizon;uniform vec3 uCloud;uniform vec2 uSun;uniform float uNight;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*noise(p);p*=2.03;a*=.5;}return v;}
+void main(){
+ vec3 d=normalize(vPos);float h=clamp(d.y*.5+.5,0.,1.);
+ vec3 col=mix(uHorizon,uTop,smoothstep(.05,.92,h));
+ float horizonGlow=exp(-pow((d.y+.02)*5.,2.))*0.17;col+=vec3(.95,.83,.7)*horizonGlow;
+ vec2 p=vec2(atan(d.z,d.x)*1.6,d.y*7.5);
+ p.x+=uTime*.018*uWind+uMouse.x*.12;p.y+=uMouse.y*.08;
+ float cloud=fbm(p*1.5+vec2(fbm(p*.7),uTime*.008*uWind));
+ float mask=smoothstep(.53,.73,cloud)*smoothstep(-.08,.28,d.y);
+ float wisps=smoothstep(.48,.68,fbm(p*3.4+vec2(uTime*.012*uWind,0.)));
+ col=mix(col,uCloud,clamp(mask*.82+wisps*.14,0.,.84));
+ float sunGlow=exp(-length(vec2(d.x-uSun.x,d.y-uSun.y))*13.);
+ col+=vec3(1.,.72,.48)*sunGlow*.34;
+ vec2 uv=gl_FragCoord.xy/vec2(1600.,900.);float grain=(hash(gl_FragCoord.xy+uTime)-.5)*.035;col+=grain;
+ col=mix(col,vec3(.025,.045,.13),uNight*.82);
+ float stars=step(.997,hash(floor(d.xy*850.)))*uNight*smoothstep(.1,.65,d.y);col+=vec3(.65,.83,1.)*stars;
+ gl_FragColor=vec4(col,1.);
+}
+`});
+const sky=new THREE.Mesh(skyGeo,skyMat);scene.add(sky);
+
+const seaGeo=new THREE.PlaneGeometry(180,100,220,130);seaGeo.rotateX(-Math.PI/2);seaGeo.translate(0,-.15,-28);
+const seaMat=new THREE.ShaderMaterial({uniforms,vertexShader:`
+uniform float uTime;uniform float uWind;uniform float uWave;varying vec3 vWorld;varying float vWave;
+void main(){vec3 p=position;float t=uTime*uWind;
+ float w=sin(p.x*.12+t*.8)*.22+sin(p.x*.055+p.z*.11-t*.55)*.30+cos(p.z*.17+t*.4)*.08;
+ p.y+=w*uWave;vWave=w;vec4 world=modelMatrix*vec4(p,1.);vWorld=world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}
+`,fragmentShader:`
+precision highp float;uniform vec3 uSea;uniform vec3 uDeep;uniform float uTime;uniform float uWave;varying vec3 vWorld;varying float vWave;
+void main(){float d=clamp((-vWorld.z-2.)/55.,0.,1.);vec3 col=mix(uSea,uDeep,d);
+ float lines=sin(vWorld.x*.85+sin(vWorld.z*.17+uTime*.8)*1.7+uTime*.5);
+ float glint=smoothstep(.72,.98,lines)*(.12+uWave*.14);
+ float ripples=smoothstep(.86,.99,sin(vWorld.x*.32+vWorld.z*.7+sin(vWorld.x*.11+uTime)*.8));
+ col+=vec3(.52,.8,.87)*(glint+ripples*.05);
+ gl_FragColor=vec4(col,.96);}
+`,transparent:true});
+const sea=new THREE.Mesh(seaGeo,seaMat);scene.add(sea);
+
+// A soft, distant horizon mist
+const mistGeo=new THREE.PlaneGeometry(180,22);
+const mistMat=new THREE.MeshBasicMaterial({color:0xdaf0f5,transparent:true,opacity:.23,depthWrite:false});
+const mist=new THREE.Mesh(mistGeo,mistMat);mist.position.set(0,1.1,-13);scene.add(mist);
+
+// Shader-driven flock particles
+const count=850;const flockGeo=new THREE.BufferGeometry();const seeds=new Float32Array(count*3);
+for(let i=0;i<count;i++){seeds[i*3]=Math.random();seeds[i*3+1]=Math.random();seeds[i*3+2]=Math.random();}
+flockGeo.setAttribute('aSeed',new THREE.BufferAttribute(seeds,3));
+const flockMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:uniforms.uTime,uMouse:uniforms.uMouse,uWind:uniforms.uWind,uNight:uniforms.uNight},vertexShader:`
+attribute vec3 aSeed;uniform float uTime;uniform vec2 uMouse;uniform float uWind;uniform float uNight;varying float vAlpha;
+void main(){float t=uTime*(.12+uWind*.18);float x=(aSeed.x-.5)*22.+sin(t+aSeed.y*9.)*1.2+uMouse.x*1.2;
+ float y=4.4+aSeed.y*7.+sin(t*1.7+aSeed.x*12.)*.65+uMouse.y*.5;
+ float z=-5.-aSeed.z*19.;vec3 p=vec3(x,y,z);
+ vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;
+ gl_PointSize=clamp((1.8+aSeed.z*2.)*(28./-mv.z),1.,5.);
+ vAlpha=(.25+aSeed.y*.55)*(1.-uNight*.25);}
+`,fragmentShader:`
+varying float vAlpha;void main(){vec2 p=gl_PointCoord-.5;float d=length(p);if(d>.5)discard;
+ float wing=abs(p.x)*.6+abs(p.y);float a=smoothstep(.5,.06,d)*vAlpha;
+ gl_FragColor=vec4(vec3(.17,.39,.49),a*(.6+wing*.3));}
+`});
+const flock=new THREE.Points(flockGeo,flockMat);scene.add(flock);
+
+// PBR GLB sample from the public Khronos glTF Sample Assets repository
+const modelGroup=new THREE.Group();modelGroup.position.set(4.3,2.0,0.0);scene.add(modelGroup);
+const loader=new GLTFLoader();
+loader.load('https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb',gltf=>{
+ const model=gltf.scene;
+ const box=new THREE.Box3().setFromObject(model);const size=box.getSize(new THREE.Vector3());const center=box.getCenter(new THREE.Vector3());
+ model.position.sub(center);const max=Math.max(size.x,size.y,size.z);model.scale.setScalar(2.45/max);
+ model.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;if(o.material){o.material.needsUpdate=true;}}});
+ modelGroup.add(model);
+ document.querySelector('#model-status').textContent='MODEL: DAMAGED HELMET · PBR READY';
+},undefined,err=>{console.warn('GLB failed to load',err);document.querySelector('#model-status').textContent='MODEL: CDN UNAVAILABLE — RELOAD TO RETRY';});
+
+const themes={
+ morning:{top:'#8ac9e5',horizon:'#f5f2df',cloud:'#ffffff',sea:'#55a8c2',deep:'#2b718f',sun:[-.48,.18],night:0,exposure:1.12},
+ evening:{top:'#7897c9',horizon:'#ffc5a2',cloud:'#ffe0d1',sea:'#537fa8',deep:'#294d79',sun:[-.3,-.08],night:.12,exposure:1.02},
+ night:{top:'#172b55',horizon:'#526d99',cloud:'#a3b7d5',sea:'#203f68',deep:'#101f3e',sun:[.3,.12],night:1,exposure:.85}
+};
+function setTheme(name){const t=themes[name];for(const key of ['top','horizon','cloud','sea','deep'])uniforms[key==='top'?'uTop':key==='horizon'?'uHorizon':key==='cloud'?'uCloud':key==='sea'?'uSea':'uDeep'].value.set(t[key]);uniforms.uSun.value.set(...t.sun);uniforms.uNight.value=t.night;flockMat.uniforms.uNight.value=t.night;renderer.toneMappingExposure=t.exposure;
+ sun.color.set(name==='evening'?0xffa978:name==='night'?0x7299ff:0xfff1d9);sun.intensity=name==='night'?.28:name==='evening'?1.3:2.6;fill.intensity=name==='night'?1.8:1.4;
+ document.querySelectorAll('[data-theme]').forEach(b=>b.classList.toggle('active',b.dataset.theme===name));}
+document.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click',()=>setTheme(b.dataset.theme)));
+const mouseTarget=new THREE.Vector2(.5,.5);window.addEventListener('pointermove',e=>{mouseTarget.x=e.clientX/innerWidth;mouseTarget.y=1-e.clientY/innerHeight;});
+document.querySelector('#wind').addEventListener('input',e=>{uniforms.uWind.value=+e.target.value;document.querySelector('#wind-value').textContent=(+e.target.value).toFixed(1)+'×';});
+document.querySelector('#wave').addEventListener('input',e=>{uniforms.uWave.value=+e.target.value;document.querySelector('#wave-value').textContent=(+e.target.value).toFixed(1)+'×';});
+document.querySelector('#reset-view').addEventListener('click',()=>{camera.position.set(0,5.8,15.5);controls.target.set(0,2.1,0);controls.update();});
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));});
+const clock=new THREE.Clock();let elapsed=0;
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);elapsed+=dt;uniforms.uTime.value=elapsed;uniforms.uMouse.value.lerp(mouseTarget,.035);controls.update();modelGroup.rotation.y=Math.sin(elapsed*.28)*.18;modelGroup.position.y=2+Math.sin(elapsed*.7)*.12;renderer.render(scene,camera);}
+animate();
+window.addEventListener('load',()=>setTimeout(()=>document.querySelector('#loading').classList.add('hide'),500));
+setTimeout(()=>document.querySelector('#loading').classList.add('hide'),3500);
+</script>
+</body>
+</html>
