@@ -38,21 +38,25 @@ function applyTransform(){
 }
 ['scale','rx','ry','rz'].forEach(id=>document.getElementById(id).addEventListener('input',applyTransform));
 function animateFace(raw,dt){
- const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.075);
+ const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.085);
  for(const k of Object.keys(raw))smooth[k]=lerp(smooth[k]??raw[k]??0,raw[k]??0,a);
- const s=smooth, val=k=>s[k]||0;
- // Amplify subtle tracking signals while keeping values bounded.
- const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))*.5*5.0);
- const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))*.5*3.8,(val('browDownLeft')+val('browDownRight'))*1.15));
- const browRaise=clamp((val('browOuterUpLeft')+val('browOuterUpRight'))*.5*2.6);
- const cheekSmile=clamp((val('cheekSquintLeft')+val('cheekSquintRight'))*.5*3.0);
- const mouthPress=clamp((val('mouthPressLeft')+val('mouthPressRight'))*.5*2.5);
- const jaw=clamp(val('jawOpen')*4.8);
- const stretch=clamp((val('mouthStretchLeft')+val('mouthStretchRight'))*.5*3.2);
- const funnel=clamp(val('mouthFunnel')*2.8);
- const mouthOpen=clamp(Math.max(val('jawOpen')*4.8,funnel,stretch*.72));
- const blinkL=clamp(val('eyeBlinkLeft')*1.12),blinkR=clamp(val('eyeBlinkRight')*1.12);
- // Drive compatible GLB morph targets, if available.
+ const s=smooth, val=k=>clamp(s[k]||0);
+ // Blendshapes are normalized to 0..1. Keep mouth opening deliberately restrained.
+ const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))*.5*2.2,0,.9);
+ const smileL=val('mouthSmileLeft'), smileR=val('mouthSmileRight');
+ const frown=clamp((val('mouthFrownLeft')+val('mouthFrownRight'))*.5*1.8,0,.7);
+ const browRaiseL=val('browInnerUp')*.45+val('browOuterUpLeft')*1.55;
+ const browRaiseR=val('browInnerUp')*.45+val('browOuterUpRight')*1.55;
+ const browDownL=val('browDownLeft')*1.65;
+ const browDownR=val('browDownRight')*1.65;
+ const cheekSmile=clamp((val('cheekSquintLeft')+val('cheekSquintRight'))*.5*1.5,0,.8);
+ const mouthPress=clamp((val('mouthPressLeft')+val('mouthPressRight'))*.5*1.4,0,.7);
+ const jaw=clamp(val('jawOpen')*1.45,0,.42);
+ const stretch=clamp((val('mouthStretchLeft')+val('mouthStretchRight'))*.5*1.25,0,.65);
+ const funnel=clamp(val('mouthFunnel')*.55,0,.25);
+ const mouthOpen=clamp(Math.max(jaw,funnel,stretch*.30),0,.42);
+ const blinkL=clamp(val('eyeBlinkLeft')*.98,0,.98), blinkR=clamp(val('eyeBlinkRight')*.98,0,.98);
+ // Apply native morph targets only when the GLB actually contains them.
  const aliases={
   mouthSmileLeft:['mouthSmileLeft','Smile_L','smile_left'],mouthSmileRight:['mouthSmileRight','Smile_R','smile_right'],
   jawOpen:['jawOpen','Jaw_Open','jaw_open'],mouthFunnel:['mouthFunnel','Mouth_Funnel'],
@@ -65,28 +69,52 @@ function animateFace(raw,dt){
   if(!o.isMesh||!o.morphTargetDictionary||!o.morphTargetInfluences)return;
   for(const [key,names] of Object.entries(aliases)){
    const target=names.find(n=>o.morphTargetDictionary[n]!==undefined);
-   if(target!==undefined)o.morphTargetInfluences[o.morphTargetDictionary[target]]=clamp(val(key)*(key.startsWith('mouthSmile')?1.35:1.0));
+   if(target!==undefined){
+    let v=val(key);
+    if(key==='jawOpen')v=clamp(v*.8,0,.42);
+    if(key.startsWith('mouthSmile'))v=clamp(v*1.15,0,.9);
+    if(key.startsWith('brow'))v=clamp(v*1.45,0,.9);
+    o.morphTargetInfluences[o.morphTargetDictionary[target]]=v;
+   }
   }
  });
+ // Eye direction: combine camera tracking with manual fine adjustment.
  for(const [name,side] of [['Pupil_L','L'],['Pupil_R','R']]){
   const o=get(name);if(!o)continue;const b=o.userData.base;
   const lookIn=val(side==='L'?'eyeLookInLeft':'eyeLookInRight'),lookOut=val(side==='L'?'eyeLookOutLeft':'eyeLookOutRight');
   const lookUp=val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight'),lookDown=val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight');
-  o.position.x=b.p.x+(side==='L'?lookIn-lookOut:lookOut-lookIn)*.62+slider('gazeX')*.34;
-  o.position.y=b.p.y+(lookUp-lookDown)*.48+slider('gazeY')*.28;
-  o.scale.y=b.s.y*(1-(side==='L'?blinkL:blinkR)*.96);
+  const horizontal=(side==='L'?lookIn-lookOut:lookOut-lookIn);
+  o.position.x=b.p.x+THREE.MathUtils.clamp(horizontal*.18+slider('gazeX')*.12,-.22,.22);
+  o.position.y=b.p.y+THREE.MathUtils.clamp((lookUp-lookDown)*.14+slider('gazeY')*.10,-.16,.16);
+  o.scale.y=b.s.y*(1-(side==='L'?blinkL:blinkR)*.92);
  }
- for(const [name,down,up,dir] of [['Eyebrow_L','browDownLeft','browOuterUpLeft',-1],['Eyebrow_R','browDownRight','browOuterUpRight',1]]){
+ // More expressive but restrained brows; retain each mesh's original transform.
+ for(const [name,side] of [['Eyebrow_L','L'],['Eyebrow_R','R']]){
   const o=get(name);if(!o)continue;const b=o.userData.base;
-  const lift=val(up),lower=val(down);
-  o.position.y=b.p.y+lift*.82-lower*.72-frown*.12+smile*.10+cheekSmile*.04;
-  o.rotation.z=b.r.z+dir*(lower*1.45-lift*1.28+frown*.42-smile*.22);
-  o.rotation.x=b.r.x-(lift+lower)*.24;
+  const raise=side==='L'?browRaiseL:browRaiseR, lower=side==='L'?browDownL:browDownR;
+  const asym=side==='L'?smileL:smileR;
+  o.position.y=b.p.y+raise*.22-lower*.17+smile*.035-frown*.025;
+  o.rotation.z=b.r.z+(side==='L'?-1:1)*(lower*.40-raise*.48+smile*.055-asym*.045);
+  o.rotation.x=b.r.x-(raise+lower)*.08;
  }
+ // Simple lip meshes: cap separation so the mouth never stretches unnaturally wide.
  const upper=get('Upper_lip'),lower=get('Lower_lip');
- if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*1.42+stretch*.78-frown*.45-mouthPress*.12);upper.scale.y=b.s.y*(1+smile*.62+mouthOpen*.30+cheekSmile*.12);upper.position.y=b.p.y+smile*.20+mouthOpen*.34-frown*.16;upper.position.z=b.p.z+mouthOpen*.06;}
- if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*1.18+stretch*.72-frown*.38-mouthPress*.10);lower.position.y=b.p.y-jaw*.55-mouthOpen*.56+smile*.17-frown*.18;lower.position.z=b.p.z+mouthOpen*.07;lower.scale.y=b.s.y*(1+jaw*2.25+mouthOpen*1.55);}
-}async function start(){
+ if(upper){
+  const b=upper.userData.base;
+  upper.scale.x=b.s.x*(1+smile*.30+stretch*.16-frown*.10);
+  upper.scale.y=b.s.y*(1+smile*.10+mouthOpen*.06);
+  upper.position.y=b.p.y+smile*.035+mouthOpen*.055-frown*.025;
+  upper.position.z=b.p.z+mouthOpen*.015;
+ }
+ if(lower){
+  const b=lower.userData.base;
+  lower.scale.x=b.s.x*(1+smile*.26+stretch*.14-frown*.08);
+  lower.position.y=b.p.y-mouthOpen*.13+smile*.025-frown*.025;
+  lower.position.z=b.p.z+mouthOpen*.025;
+  lower.scale.y=b.s.y*(1+mouthOpen*.28);
+ }
+}
+async function start(){
  if(started)return;started=true;startButton.hidden=true;statusBox.textContent='กำลังเปิดกล้องและโหลด untitled.glb…';
  try{
   mindar=new MindARThree({container,maxTrack:1,filterMinCF:.001,filterBeta:1});
