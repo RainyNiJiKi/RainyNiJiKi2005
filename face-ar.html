@@ -16,6 +16,8 @@
 <label>หมุน X <input id="rx" type="range" min="-180" max="180" value="0"></label>
 <label>หมุน Y <input id="ry" type="range" min="-180" max="180" value="0"></label>
 <label>หมุน Z <input id="rz" type="range" min="-180" max="180" value="0"></label>
+<label>มองซ้าย/ขวา <input id="gazeX" type="range" min="-1" max="1" step=".05" value="0"></label>
+<label>มองขึ้น/ลง <input id="gazeY" type="range" min="-1" max="1" step=".05" value="0"></label>
 </div>
 <script type="module">
 import * as THREE from 'three';
@@ -36,28 +38,28 @@ function applyTransform(){
 }
 ['scale','rx','ry','rz'].forEach(id=>document.getElementById(id).addEventListener('input',applyTransform));
 function animateFace(raw,dt){
- const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.045);
+ const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.035);
  for(const k of Object.keys(raw))smooth[k]=lerp(smooth[k]||0,raw[k]||0,a);
  const s=smooth, val=k=>s[k]||0;
- const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))/2*2.15);
+ const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))/2*2.8);
  const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))/2*1.7,(val('browDownLeft')+val('browDownRight'))*.78));
- const jaw=clamp(val('jawOpen')*2.6), mouthOpen=clamp(Math.max(val('jawOpen')*2.45,val('mouthFunnel')*1.15,(val('mouthStretchLeft')+val('mouthStretchRight'))*.32)); const blinkL=clamp(val('eyeBlinkLeft')),blinkR=clamp(val('eyeBlinkRight'));
+ const jaw=clamp(val('jawOpen')*3.35), mouthOpen=clamp(Math.max(val('jawOpen')*3.3,val('mouthFunnel')*1.15,(val('mouthStretchLeft')+val('mouthStretchRight'))*.32)); const blinkL=clamp(val('eyeBlinkLeft')),blinkR=clamp(val('eyeBlinkRight'));
  for(const [name,side] of [['Pupil_L','L'],['Pupil_R','R']]){
   const o=get(name);if(!o)continue;
   const base=o.userData.base;
   const inward=val(side==='L'?'eyeLookInLeft':'eyeLookInRight'),outward=val(side==='L'?'eyeLookOutLeft':'eyeLookOutRight');
-  o.position.x=base.p.x+(side==='L'?inward-outward:outward-inward )*.115;
-  o.position.y=base.p.y+(val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight')-val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight') )*.085;
+  o.position.x=base.p.x+(side==='L'?inward-outward:outward-inward )*.22 + slider('gazeX')*.12;
+  o.position.y=base.p.y+(val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight')-val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight') )*.16 + slider('gazeY')*.10;
   o.scale.y=base.s.y*(1-(side==='L'?blinkL:blinkR)*.92);
  }
  for(const [name,down,up,dir] of [['Eyebrow_L','browDownLeft','browOuterUpLeft',-1],['Eyebrow_R','browDownRight','browOuterUpRight',1]]){
   const o=get(name);if(!o)continue;const b=o.userData.base;
-  o.position.y=b.p.y+val(up)*.14-val(down)*.16-frown*.045;
-  o.rotation.z=b.r.z+dir*(val(down)*.34-val(up)*.24+frown*.16);
+  o.position.y=b.p.y+val(up)*.24-val(down)*.28-frown*.07;
+  o.rotation.z=b.r.z+dir*(val(down)*.55-val(up)*.42+frown*.24);
  }
  const upper=get('Upper_lip'),lower=get('Lower_lip');
- if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*.52-frown*.22);upper.scale.y=b.s.y*(1+smile*.16);upper.position.y=b.p.y+smile*.055+mouthOpen*.075-frown*.04;}
- if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*.42-frown*.16);lower.position.y=b.p.y-jaw*.16-mouthOpen*.13+smile*.045-frown*.05;lower.scale.y=b.s.y*(1+jaw*.78+mouthOpen*.42);}
+ if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*.78-frown*.32);upper.scale.y=b.s.y*(1+smile*.28);upper.position.y=b.p.y+smile*.085+mouthOpen*.12-frown*.06;}
+ if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*.62-frown*.24);lower.position.y=b.p.y-jaw*.23-mouthOpen*.22+smile*.065-frown*.075;lower.scale.y=b.s.y*(1+jaw*1.15+mouthOpen*.7);}
 }
 async function start(){
  if(started)return;started=true;startButton.hidden=true;statusBox.textContent='กำลังเปิดกล้องและโหลด untitled.glb…';
