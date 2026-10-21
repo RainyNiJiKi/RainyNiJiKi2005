@@ -1,47 +1,74 @@
 
-<a-assets timeout="15000">
-  <a-asset-item
-    id="model0"
-    src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/etrian_odyssey_3_monk.glb">
-  </a-asset-item>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RainyNiJiKi - MindAR</title>
 
-  <a-asset-item
-    id="model1"
-    src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/jiggly_watermelon_jello.glb">
-  </a-asset-item>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+</head>
 
-  <a-asset-item
-    id="model2"
-    src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/bird_orange.glb">
-  </a-asset-item>
-</a-assets>
+<body style="margin: 0; overflow: hidden;">
 
-<!-- Target 1: Monk -->
-<a-entity mindar-image-target="targetIndex: 0">
-  <a-gltf-model
-    src="#model0"
-    position="0 0 0"
-    rotation="0 0 0"
-    scale="0.5 0.5 0.5">
-  </a-gltf-model>
-</a-entity>
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 3;"
+    color-space="sRGB"
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
 
-<!-- Target 2: Watermelon Jello -->
-<a-entity mindar-image-target="targetIndex: 1">
-  <a-gltf-model
-    src="#model1"
-    position="0 0 0"
-    rotation="0 0 0"
-    scale="0.5 0.5 0.5">
-  </a-gltf-model>
-</a-entity>
+    <a-assets timeout="30000">
+      <a-asset-item id="model0"
+        src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/etrian_odyssey_3_monk.glb">
+      </a-asset-item>
 
-<!-- Target 3: Orange Bird -->
-<a-entity mindar-image-target="targetIndex: 2">
-  <a-gltf-model
-    src="#model2"
-    position="0 0 0"
-    rotation="0 0 0"
-    scale="0.5 0.5 0.5">
-  </a-gltf-model>
-</a-entity>
+      <a-asset-item id="model1"
+        src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/jiggly_watermelon_jello.glb">
+      </a-asset-item>
+
+      <a-asset-item id="model2"
+        src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/bird_orange.glb">
+      </a-asset-item>
+    </a-assets>
+
+    <!-- Target 0: Monk -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-gltf-model
+        src="#model0"
+        position="0 0 0"
+        rotation="0 0 0"
+        scale="0.5 0.5 0.5">
+      </a-gltf-model>
+    </a-entity>
+
+    <!-- Target 1: Watermelon Jello -->
+    <a-entity mindar-image-target="targetIndex: 1">
+      <a-gltf-model
+        src="#model1"
+        position="0 0 0"
+        rotation="0 0 0"
+        scale="0.5 0.5 0.5">
+      </a-gltf-model>
+    </a-entity>
+
+    <!-- Target 2: Orange Bird -->
+    <a-entity mindar-image-target="targetIndex: 2">
+      <a-gltf-model
+        src="#model2"
+        position="0 0 0"
+        rotation="0 0 0"
+        scale="0.5 0.5 0.5">
+      </a-gltf-model>
+    </a-entity>
+
+    <a-camera
+      position="0 0 0"
+      look-controls="enabled: false">
+    </a-camera>
+
+  </a-scene>
+
+</body>
+</html>
