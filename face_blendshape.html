@@ -1,62 +1,99 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MindAR Blendshape</title>
-  <script type="importmap">
-    { "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
-    } }
-  </script>
-  <style>
-    body { margin: 0; }
-    #container { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MindAR Face Blendshape - Robot Fros</title>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/","mindar-face-three":"https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"}}
+</script>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111827;color:#f8fafc;font-family:system-ui,sans-serif}#container{position:fixed;inset:0}.panel{position:fixed;z-index:3;left:14px;top:14px;width:min(350px,calc(100% - 28px));padding:16px;border:1px solid #ffffff25;border-radius:16px;background:#111827e8;backdrop-filter:blur(12px)}h1{font-size:18px;margin:0 0 6px}.desc{font-size:13px;color:#cbd5e1;margin:0 0 12px;line-height:1.5}.status{font-size:13px;line-height:1.5;padding:10px;border-radius:10px;background:#ffffff0d;margin-bottom:10px}button{width:100%;padding:11px;border:0;border-radius:10px;background:#a7f3d0;color:#064e3b;font-weight:700;cursor:pointer}button:disabled{opacity:.55}.scale{font-size:13px;display:flex;justify-content:space-between;margin-top:12px}input{width:100%;accent-color:#a7f3d0}#details{font-size:12px;line-height:1.5;color:#cbd5e1;max-height:110px;overflow:auto;overflow-wrap:anywhere;margin-top:10px}.hint{font-size:11px;line-height:1.45;color:#94a3b8;margin-bottom:0}
+</style>
 </head>
 <body>
-  <div id="container"></div>
-  <script type="module">
-    import * as THREE from 'three';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-    import { MindARThree } from 'mindar-face-three';
+<div id="container"></div>
+<section class="panel">
+<h1>Face Blendshape AR</h1>
+<p class="desc">ทดลองติดตามสีหน้าด้วยกล้องและโมเดล Robot Fros.glb</p>
+<div class="status" id="status">กำลังโหลดโมเดล…</div>
+<button id="start" disabled>กำลังเตรียมระบบ…</button>
+<div class="scale"><label for="scale">ขนาดโมเดล</label><span id="scaleVal">1.00×</span></div>
+<input id="scale" type="range" min="0.2" max="4" step="0.05" value="1">
+<div id="details">ตรวจสอบ Morph Targets…</div>
+<p class="hint">ต้องเปิดผ่าน HTTPS (เช่น GitHub Pages) หรือ localhost และอนุญาตกล้อง หากโมเดลไม่มี Morph Targets/Shape Keys ที่ตรงกับชื่อ Blendshape จะติดตามใบหน้าได้ แต่สีหน้าโมเดลจะไม่ขยับ</p>
+</section>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MindARThree} from 'mindar-face-three';
 
-    const mindar = new MindARThree({ container: document.querySelector('#container') });
-    const { renderer, scene, camera } = mindar;
-    // สร้าง environment texture แบบห้องสตูดิโอ เพื่อเพิ่มแสงและเงาสะท้อนให้โมเดล
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const roomEnvironment = new RoomEnvironment();
-    const environmentTarget = pmremGenerator.fromScene(roomEnvironment);
-    scene.environment = environmentTarget.texture;
-    roomEnvironment.dispose();
-    pmremGenerator.dispose();
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
-    const model = await new GLTFLoader().loadAsync('https://RainyNiJiKi2005/Robot Fros.glb');
-    
-    model.scene.scale.setScalar(2);
-    mindar.addAnchor(1).group.add(model.scene);
-    const meshes = [];
-    model.scene.traverse(object => {
-      if (object.isMesh && object.morphTargetDictionary && object.morphTargetInfluences) meshes.push(object);
-    });
+const $=id=>document.getElementById(id);
+const status=$('status'), startButton=$('start'), details=$('details'), scaleInput=$('scale');
+let mindar, modelRoot, meshes=[], running=false, loaded=false;
 
-    await mindar.start();
-    function animate() {
-      const categories = mindar.getLatestEstimate()?.blendshapes?.categories;
-      // จับคู่ชื่อ blendshape กับ morph target ของโมเดล เช่น jawOpen, eyeBlinkLeft
-      for (const mesh of meshes) {
-        for (const { categoryName, score } of categories ?? []) {
-          const index = mesh.morphTargetDictionary[categoryName];
-          if (index !== undefined) mesh.morphTargetInfluences[index] = score;
-        }
-      }
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
+function setStatus(message){status.textContent=message}
+try {
+  mindar=new MindARThree({container:$('container'),uiLoading:'no',uiScanning:'no',uiError:'no'});
+  const {renderer,scene,camera}=mindar;
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1.7));
+  const light=new THREE.DirectionalLight(0xffffff,1.5);light.position.set(0,1,2);scene.add(light);
+
+  // The model is stored beside this HTML file in the same GitHub repository.
+  const gltf=await new GLTFLoader().loadAsync('./Robot%20Fros.glb');
+  modelRoot=gltf.scene;
+  modelRoot.scale.setScalar(Number(scaleInput.value));
+  modelRoot.traverse(obj=>{
+    if(obj.isMesh && obj.morphTargetDictionary && obj.morphTargetInfluences) meshes.push(obj);
+  });
+  mindar.addAnchor(1).group.add(modelRoot);
+  const names=[...new Set(meshes.flatMap(m=>Object.keys(m.morphTargetDictionary)))];
+  if(names.length){
+    details.textContent='พบ Morph Target '+names.length+' รายการ: '+names.slice(0,24).join(', ')+(names.length>24?' …':'');
+    setStatus('โหลดโมเดลแล้ว · พบ Morph Targets '+names.length+' รายการ');
+  }else{
+    details.textContent='โหลดโมเดลสำเร็จ แต่ไม่พบ Morph Targets ใน Mesh จึงไม่สามารถขยับปาก/ตาตาม Blendshape ได้ ต้องตรวจใน Blender ว่าโมเดลมี Shape Keys แล้ว Export เป็น GLB';
+    setStatus('โหลดโมเดลแล้ว แต่ไม่พบ Morph Targets');
+  }
+  loaded=true;startButton.disabled=false;startButton.textContent='เริ่มใช้งานกล้อง';
+
+  scaleInput.addEventListener('input',()=>{
+    const n=Number(scaleInput.value);modelRoot.scale.setScalar(n);$('scaleVal').textContent=n.toFixed(2)+'×';
+  });
+
+  startButton.addEventListener('click',async()=>{
+    if(running){
+      try{await mindar.stop()}catch(e){console.warn(e)}
+      running=false;startButton.textContent='เริ่มใช้งานกล้อง';setStatus('หยุดกล้องแล้ว');return;
     }
-    animate();
-  </script>
+    startButton.disabled=true;setStatus('กำลังขออนุญาตเปิดกล้อง…');
+    try{
+      await mindar.start();running=true;startButton.textContent='หยุดกล้อง';
+      setStatus(meshes.length?'กล้องทำงานแล้ว · ลองขยับใบหน้า':'กล้องทำงานแล้ว แต่โมเดลไม่มี Morph Targets');
+      renderer.setAnimationLoop(()=>{
+        const categories=mindar.getLatestEstimate()?.blendshapes?.categories;
+        if(categories){
+          const scores=new Map(categories.map(c=>[c.categoryName,c.score]));
+          for(const mesh of meshes){
+            for(const [name,index] of Object.entries(mesh.morphTargetDictionary)){
+              // Exact-name matching follows MindAR's documented blendshape example.
+              if(scores.has(name)) mesh.morphTargetInfluences[index]=scores.get(name);
+            }
+          }
+        }
+        renderer.render(scene,camera);
+      });
+    }catch(e){
+      console.error(e);setStatus('เปิดกล้องไม่สำเร็จ: '+(e?.message||'ตรวจสิทธิ์กล้องและ HTTPS'));startButton.textContent='ลองเปิดกล้องอีกครั้ง';
+    }finally{startButton.disabled=false}
+  });
+  window.addEventListener('resize',()=>renderer.setSize($('container').clientWidth,$('container').clientHeight));
+}catch(e){
+  console.error(e);setStatus('เกิดข้อผิดพลาดในการโหลด: '+(e?.message||String(e)));
+  details.textContent='ตรวจสอบว่า Robot Fros.glb อยู่ที่ root ของ Repository และชื่อไฟล์ตรงกัน รวมถึงอินเทอร์เน็ตเชื่อมต่อได้';
+  startButton.textContent='โหลดไม่สำเร็จ';startButton.disabled=true;
+}
+</script>
 </body>
 </html>
