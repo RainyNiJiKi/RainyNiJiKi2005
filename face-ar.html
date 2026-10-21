@@ -36,28 +36,28 @@ function applyTransform(){
 }
 ['scale','rx','ry','rz'].forEach(id=>document.getElementById(id).addEventListener('input',applyTransform));
 function animateFace(raw,dt){
- const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.065);
+ const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.045);
  for(const k of Object.keys(raw))smooth[k]=lerp(smooth[k]||0,raw[k]||0,a);
  const s=smooth, val=k=>s[k]||0;
- const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))/2*1.65);
- const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))/2*1.45,(val('browDownLeft')+val('browDownRight'))*.58));
- const jaw=clamp(val('jawOpen')*1.9), mouthOpen=clamp(Math.max(val('jawOpen')*1.7,val('mouthFunnel')*.8,val('mouthStretchLeft')*.22+val('mouthStretchRight')*.22)), blinkL=clamp(val('eyeBlinkLeft')),blinkR=clamp(val('eyeBlinkRight'));
+ const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))/2*2.15);
+ const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))/2*1.7,(val('browDownLeft')+val('browDownRight'))*.78));
+ const jaw=clamp(val('jawOpen')*2.6), mouthOpen=clamp(Math.max(val('jawOpen')*2.45,val('mouthFunnel')*1.15,(val('mouthStretchLeft')+val('mouthStretchRight'))*.32)); const blinkL=clamp(val('eyeBlinkLeft')),blinkR=clamp(val('eyeBlinkRight'));
  for(const [name,side] of [['Pupil_L','L'],['Pupil_R','R']]){
   const o=get(name);if(!o)continue;
   const base=o.userData.base;
   const inward=val(side==='L'?'eyeLookInLeft':'eyeLookInRight'),outward=val(side==='L'?'eyeLookOutLeft':'eyeLookOutRight');
-  o.position.x=base.p.x+(side==='L'?inward-outward:outward-inward )*.065;
-  o.position.y=base.p.y+(val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight')-val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight') )*.05;
-  o.scale.y=base.s.y*(1-(side==='L'?blinkL:blinkR)*.8);
+  o.position.x=base.p.x+(side==='L'?inward-outward:outward-inward )*.115;
+  o.position.y=base.p.y+(val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight')-val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight') )*.085;
+  o.scale.y=base.s.y*(1-(side==='L'?blinkL:blinkR)*.92);
  }
  for(const [name,down,up,dir] of [['Eyebrow_L','browDownLeft','browOuterUpLeft',-1],['Eyebrow_R','browDownRight','browOuterUpRight',1]]){
   const o=get(name);if(!o)continue;const b=o.userData.base;
-  o.position.y=b.p.y+val(up)*.075-val(down)*.095-frown*.025;
-  o.rotation.z=b.r.z+dir*(val(down)*.22-val(up)*.14+frown*.11);
+  o.position.y=b.p.y+val(up)*.14-val(down)*.16-frown*.045;
+  o.rotation.z=b.r.z+dir*(val(down)*.34-val(up)*.24+frown*.16);
  }
  const upper=get('Upper_lip'),lower=get('Lower_lip');
- if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*.34-frown*.18);upper.scale.y=b.s.y*(1+smile*.10);upper.position.y=b.p.y+smile*.035+mouthOpen*.045-frown*.028;}
- if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*.28-frown*.12);lower.position.y=b.p.y-jaw*.095-mouthOpen*.055+smile*.025-frown*.03;lower.scale.y=b.s.y*(1+jaw*.48+mouthOpen*.22);}
+ if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*.52-frown*.22);upper.scale.y=b.s.y*(1+smile*.16);upper.position.y=b.p.y+smile*.055+mouthOpen*.075-frown*.04;}
+ if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*.42-frown*.16);lower.position.y=b.p.y-jaw*.16-mouthOpen*.13+smile*.045-frown*.05;lower.scale.y=b.s.y*(1+jaw*.78+mouthOpen*.42);}
 }
 async function start(){
  if(started)return;started=true;startButton.hidden=true;statusBox.textContent='กำลังเปิดกล้องและโหลด untitled.glb…';
@@ -72,7 +72,7 @@ async function start(){
   // Model-specific node names from the supplied GLB.
   model.traverse(o=>{if(['Pupil_L','Pupil_R','Eyebrow_L','Eyebrow_R','Upper_lip','Lower_lip'].includes(o.name)){objects[o.name]=o;o.userData.base={p:o.position.clone(),s:o.scale.clone(),r:o.rotation.clone()}}});
   const anchor=mindar.addAnchor(1);anchor.group.add(model);applyTransform();
-  await mindar.start();statusBox.textContent='ติดตามใบหน้าแล้ว — ขยับหน้า กลอกตา กะพริบตา ยิ้ม และทำหน้าบึ้งได้';
+  await mindar.start();statusBox.textContent='ติดตามใบหน้าแล้ว — ลองยิ้ม อ้าปาก เลิกคิ้ว กลอกตา และกะพริบตา';
   let categories=[];
   const loop=now=>{raf=requestAnimationFrame(loop);const dt=last?Math.min((now-last)/1000,.05):1/60;last=now;categories=mindar.getLatestEstimate()?.blendshapes?.categories||[];if(categories.length){const raw={};categories.forEach(x=>raw[x.categoryName]=x.score);animateFace(raw,dt)}renderer.render(scene,camera)};
   loop();
