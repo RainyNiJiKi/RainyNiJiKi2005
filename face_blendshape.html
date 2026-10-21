@@ -1,62 +1,554 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MindAR Blendshape</title>
-  <script type="importmap">
-    { "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "mindar-face-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-three.prod.js"
-    } }
-  </script>
-  <style>
-    body { margin: 0; }
-    #container { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Face Blend Shape AR - Fros</title>
+
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #111;
+    color: #fff;
+    font-family: Arial, sans-serif;
+  }
+
+  /* เวทีขนาดเท่าสัดส่วนวิดีโอ (ไม่ crop) เพื่อให้โมเดลตรงกับใบหน้า
+     กลับซ้าย-ขวาเหมือนกระจก ทั้งวิดีโอและโมเดลพร้อมกัน */
+  #stage {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 640px;
+    height: 480px;
+    transform: translate(-50%, -50%) scaleX(-1);
+    background: #000;
+    z-index: 0;
+  }
+  #video, #renderCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  #video { z-index: 0; object-fit: fill; }
+  #renderCanvas { z-index: 1; pointer-events: none; }
+
+  #panel {
+    position: fixed;
+    z-index: 5;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    max-width: 420px;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(8px);
+  }
+  #title { font-size: 18px; font-weight: bold; margin-bottom: 6px; }
+  #status { font-size: 13px; color: #b9e7ff; line-height: 1.5; margin-bottom: 6px; }
+  #status.error { color: #ff8a8a; }
+  #info { font-size: 11px; color: #aaa; line-height: 1.5; margin-bottom: 8px; word-break: break-all; }
+
+  .row { display: flex; gap: 8px; }
+  button {
+    flex: 1;
+    padding: 11px;
+    border: 0;
+    border-radius: 8px;
+    background: #1687ff;
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.55; cursor: wait; }
+  #camButton { background: #444; display: none; }
+
+  #meters {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+  .meter-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .track { height: 5px; border-radius: 10px; background: #444; overflow: hidden; }
+  .fill { width: 0%; height: 100%; background: #45c4ff; }
+
+  #help { margin-top: 10px; font-size: 11px; line-height: 1.5; color: #ccc; }
+
+  #tuner {
+    display: none;
+    position: fixed;
+    left: 12px;
+    bottom: 12px;
+    z-index: 9999;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    font: 12px/1.6 monospace;
+    border-radius: 10px;
+    white-space: pre;
+    pointer-events: none;
+  }
+
+  @media (max-width: 480px) { #panel { max-width: none; } }
+</style>
 </head>
+
 <body>
-  <div id="container"></div>
-  <script type="module">
-    import * as THREE from 'three';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-    import { MindARThree } from 'mindar-face-three';
 
-    const mindar = new MindARThree({ container: document.querySelector('#container') });
-    const { renderer, scene, camera } = mindar;
-    // สร้าง environment texture แบบห้องสตูดิโอ เพื่อเพิ่มแสงและเงาสะท้อนให้โมเดล
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const roomEnvironment = new RoomEnvironment();
-    const environmentTarget = pmremGenerator.fromScene(roomEnvironment);
-    scene.environment = environmentTarget.texture;
-    roomEnvironment.dispose();
-    pmremGenerator.dispose();
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
-    const model = await new GLTFLoader().loadAsync('https://RainyNiJiKi2005/Fros.glb');
-    
-    model.scene.scale.setScalar(2);
-    mindar.addAnchor(1).group.add(model.scene);
-    const meshes = [];
-    model.scene.traverse(object => {
-      if (object.isMesh && object.morphTargetDictionary && object.morphTargetInfluences) meshes.push(object);
-    });
+<div id="stage">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="renderCanvas"></canvas>
+</div>
 
-    await mindar.start();
-    function animate() {
-      const categories = mindar.getLatestEstimate()?.blendshapes?.categories;
-      // จับคู่ชื่อ blendshape กับ morph target ของโมเดล เช่น jawOpen, eyeBlinkLeft
-      for (const mesh of meshes) {
-        for (const { categoryName, score } of categories ?? []) {
-          const index = mesh.morphTargetDictionary[categoryName];
-          if (index !== undefined) mesh.morphTargetInfluences[index] = score;
-        }
-      }
-      renderer.render(scene, camera);
-      requestAnimationFrame(animate);
+<section id="panel">
+  <div id="title">Face Blend Shape AR</div>
+  <div id="status">กดเริ่มใช้งาน แล้วอนุญาตให้เว็บไซต์ใช้กล้อง</div>
+  <div id="info"></div>
+
+  <div class="row">
+    <button id="startButton">เริ่มใช้งานกล้อง</button>
+    <button id="camButton">ซ่อนกล้อง</button>
+  </div>
+
+  <div id="meters">
+    <div>
+      <div class="meter-label"><span>กะพริบตาซ้าย</span><span id="v-blinkL">0%</span></div>
+      <div class="track"><div class="fill" id="b-blinkL"></div></div>
+    </div>
+    <div>
+      <div class="meter-label"><span>กะพริบตาขวา</span><span id="v-blinkR">0%</span></div>
+      <div class="track"><div class="fill" id="b-blinkR"></div></div>
+    </div>
+    <div>
+      <div class="meter-label"><span>อ้าปาก</span><span id="v-jaw">0%</span></div>
+      <div class="track"><div class="fill" id="b-jaw"></div></div>
+    </div>
+    <div>
+      <div class="meter-label"><span>ยิ้ม</span><span id="v-smile">0%</span></div>
+      <div class="track"><div class="fill" id="b-smile"></div></div>
+    </div>
+  </div>
+
+  <div id="help">
+    ลองกะพริบตา อ้าปาก และยิ้ม เพื่อทดสอบ | กด T เพื่อเปิดโหมดจูนตำแหน่งโมเดล
+  </div>
+</section>
+
+<div id="tuner"></div>
+
+<!-- สคริปต์ตรวจจับข้อผิดพลาด (ไม่ใช่ module เพื่อให้ทำงานแม้ module ล้ม) -->
+<script>
+  function showErr(msg) {
+    const s = document.getElementById("status");
+    s.textContent = "ผิดพลาด: " + msg;
+    s.className = "error";
+  }
+  window.addEventListener("error", (e) => showErr(e.message || "unknown error"));
+  window.addEventListener("unhandledrejection", (e) =>
+    showErr((e.reason && e.reason.message) || String(e.reason)));
+  setTimeout(() => {
+    if (!window.__appLoaded) {
+      showErr("สคริปต์หลักไม่ทำงาน (โหลดไลบรารีจาก CDN ไม่สำเร็จ) กด F12 ดูแท็บ Console");
     }
-    animate();
-  </script>
+  }, 4000);
+</script>
+
+<!-- สำคัญ: importmap ต้องอยู่ก่อน module script -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+window.__appLoaded = true;
+
+/* ================== ตั้งค่า ================== */
+const MODEL_URL = "./Fros.glb";
+const VISION_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+const LANDMARKER_URL =
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const FIT_WIDTH = 26;   // ความกว้างหัวโมเดลโดยประมาณ (ซม.) ปรับด้วยโหมดจูนได้
+const SMOOTH = 0.5;     // 0-1 ยิ่งมากยิ่งไว (แต่สั่นง่ายขึ้น)
+
+/* ================== องค์ประกอบหน้าเว็บ ================== */
+const video = document.getElementById("video");
+const canvas = document.getElementById("renderCanvas");
+const stage = document.getElementById("stage");
+const statusText = document.getElementById("status");
+const infoText = document.getElementById("info");
+const startButton = document.getElementById("startButton");
+const camButton = document.getElementById("camButton");
+const tuner = document.getElementById("tuner");
+
+function setStatus(msg, isError = false) {
+  statusText.textContent = msg;
+  statusText.className = isError ? "error" : "";
+}
+function setMeter(id, value) {
+  const p = Math.round(THREE.MathUtils.clamp(value || 0, 0, 1) * 100);
+  document.getElementById("v-" + id).textContent = p + "%";
+  document.getElementById("b-" + id).style.width = p + "%";
+}
+
+/* ================== three.js ================== */
+const scene = new THREE.Scene();
+
+// MediaPipe สมมติกล้องที่มี vertical FOV ประมาณ 63 องศา
+const camera = new THREE.PerspectiveCamera(63, 4 / 3, 1, 10000);
+camera.position.set(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x777788, 2));
+const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+dirLight.position.set(1, 2, 4);
+scene.add(dirLight);
+
+// head = ตำแหน่ง/การหมุนจากใบหน้า | fit = ค่าจูนของเรา | modelRoot = โมเดลที่จัดกึ่งกลางแล้ว
+const head = new THREE.Group();
+const fit = new THREE.Group();
+head.add(fit);
+head.visible = false;
+scene.add(head);
+
+const CONFIG = { scale: 1, pos: [0, 0, 0], rot: [0, 0, 0] };
+let baseScale = 1;
+
+function applyConfig() {
+  fit.scale.setScalar(baseScale * CONFIG.scale);
+  fit.position.set(CONFIG.pos[0], CONFIG.pos[1], CONFIG.pos[2]);
+  fit.rotation.set(
+    THREE.MathUtils.degToRad(CONFIG.rot[0]),
+    THREE.MathUtils.degToRad(CONFIG.rot[1]),
+    THREE.MathUtils.degToRad(CONFIG.rot[2])
+  );
+}
+
+function fitStage() {
+  const vw = video.videoWidth || 640;
+  const vh = video.videoHeight || 480;
+  const s = Math.min(window.innerWidth / vw, window.innerHeight / vh);
+  const w = Math.round(vw * s), h = Math.round(vh * s);
+  stage.style.width = w + "px";
+  stage.style.height = h + "px";
+  renderer.setSize(w, h, false);
+  camera.aspect = vw / vh;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", fitStage);
+video.addEventListener("loadedmetadata", fitStage);
+fitStage();
+
+/* ================== Blend shape ================== */
+const ARKIT = [
+  "browDownLeft","browDownRight","browInnerUp","browOuterUpLeft","browOuterUpRight",
+  "cheekPuff","cheekSquintLeft","cheekSquintRight",
+  "eyeBlinkLeft","eyeBlinkRight","eyeLookDownLeft","eyeLookDownRight",
+  "eyeLookInLeft","eyeLookInRight","eyeLookOutLeft","eyeLookOutRight",
+  "eyeLookUpLeft","eyeLookUpRight","eyeSquintLeft","eyeSquintRight",
+  "eyeWideLeft","eyeWideRight",
+  "jawForward","jawLeft","jawOpen","jawRight",
+  "mouthClose","mouthDimpleLeft","mouthDimpleRight","mouthFrownLeft","mouthFrownRight",
+  "mouthFunnel","mouthLeft","mouthLowerDownLeft","mouthLowerDownRight",
+  "mouthPressLeft","mouthPressRight","mouthPucker","mouthRight",
+  "mouthRollLower","mouthRollUpper","mouthShrugLower","mouthShrugUpper",
+  "mouthSmileLeft","mouthSmileRight","mouthStretchLeft","mouthStretchRight",
+  "mouthUpperUpLeft","mouthUpperUpRight","noseSneerLeft","noseSneerRight"
+];
+
+function normalize(name) {
+  return name.trim().replace(/[_\-. ]+/g, "").toLowerCase();
+}
+const ARKIT_NORM = new Set(ARKIT.map(normalize));
+
+// จับคู่ชื่อ morph target ของโมเดล -> ชื่อ ARKit (แบบ normalize แล้ว)
+function matchKey(morphName) {
+  const n = normalize(morphName);
+  const candidates = [n, n.replace(/l$/, "left"), n.replace(/r$/, "right")];
+  for (const c of candidates) if (ARKIT_NORM.has(c)) return c;
+  let best = null;
+  for (const k of ARKIT_NORM) {
+    if (n.endsWith(k) && (!best || k.length > best.length)) best = k;
+  }
+  return best;
+}
+
+let morphEntries = []; // { mesh, idx, key, v }
+
+async function loadModel() {
+  setStatus("กำลังโหลดโมเดล Fros.glb...");
+  const gltf = await new GLTFLoader().loadAsync(MODEL_URL);
+  const modelRoot = gltf.scene;
+
+  const allNames = new Set();
+  const unmatched = new Set();
+  let matched = 0;
+
+  modelRoot.traverse((obj) => {
+    if (!(obj.isMesh || obj.isSkinnedMesh)) return;
+    obj.frustumCulled = false;
+    const dict = obj.morphTargetDictionary;
+    if (!dict || !obj.morphTargetInfluences) return;
+    for (const [name, idx] of Object.entries(dict)) {
+      allNames.add(name);
+      const key = matchKey(name);
+      if (key) {
+        morphEntries.push({ mesh: obj, idx, key, v: 0 });
+        matched++;
+      } else {
+        unmatched.add(name);
+      }
+    }
+  });
+
+  const box = new THREE.Box3().setFromObject(modelRoot);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  if (size.x <= 0 || size.y <= 0) throw new Error("โมเดลไม่มีขนาดที่ถูกต้อง");
+
+  modelRoot.position.sub(center);        // จัดโมเดลให้อยู่กึ่งกลาง
+  fit.add(modelRoot);
+  baseScale = FIT_WIDTH / size.x;        // ปรับขนาดให้เท่าหัวคน
+  applyConfig();
+
+  console.log("Morph targets ทั้งหมด:", [...allNames]);
+  console.log("จับคู่ไม่ได้:", [...unmatched]);
+
+  let info = `Morph targets: ${allNames.size} ตัว | จับคู่กับ ARKit ได้: ${matched} ตัว`;
+  if (allNames.size === 0) {
+    info += " | ⚠ โมเดลนี้ไม่มี morph targets (ใบหน้าจะไม่ขยับ)";
+  } else if (unmatched.size) {
+    info += " | ไม่ตรง: " + [...unmatched].slice(0, 8).join(", ") + (unmatched.size > 8 ? "..." : "");
+  }
+  infoText.textContent = info;
+}
+
+/* ================== MediaPipe ================== */
+let landmarker = null;
+
+async function loadLandmarker() {
+  setStatus("กำลังโหลดระบบตรวจจับสีหน้า...");
+  const { FaceLandmarker, FilesetResolver } = await import(VISION_URL + "/vision_bundle.mjs");
+  const fileset = await FilesetResolver.forVisionTasks(VISION_URL + "/wasm");
+
+  const options = (delegate) => ({
+    baseOptions: { modelAssetPath: LANDMARKER_URL, delegate },
+    runningMode: "VIDEO",
+    numFaces: 1,
+    outputFaceBlendshapes: true,
+    outputFacialTransformationMatrixes: true
+  });
+
+  try {
+    landmarker = await FaceLandmarker.createFromOptions(fileset, options("GPU"));
+  } catch (e) {
+    console.warn("GPU delegate ใช้ไม่ได้ สลับเป็น CPU", e);
+    landmarker = await FaceLandmarker.createFromOptions(fileset, options("CPU"));
+  }
+}
+
+/* ================== วนลูปตรวจจับ ================== */
+const targetPos = new THREE.Vector3();
+const targetQuat = new THREE.Quaternion();
+const tmpScale = new THREE.Vector3();
+const tmpMat = new THREE.Matrix4();
+let haveFace = false;
+let firstPose = true;
+let currentValues = {};
+let lastVideoTime = -1;
+let running = false;
+
+function handleResult(result) {
+  const hasFace = result.faceLandmarks && result.faceLandmarks.length > 0;
+
+  if (!hasFace) {
+    haveFace = false;
+    currentValues = {};
+    firstPose = true;
+    return false;
+  }
+
+  // Blend shapes
+  currentValues = {};
+  const cats = (result.faceBlendshapes && result.faceBlendshapes[0] &&
+                result.faceBlendshapes[0].categories) || [];
+  for (const c of cats) currentValues[normalize(c.categoryName)] = c.score;
+
+  // ตำแหน่ง + การหมุนของหัว
+  const m = result.facialTransformationMatrixes && result.facialTransformationMatrixes[0];
+  if (m) {
+    tmpMat.fromArray(m.data);
+    tmpMat.decompose(targetPos, targetQuat, tmpScale);
+    if (firstPose) {
+      head.position.copy(targetPos);
+      head.quaternion.copy(targetQuat);
+      firstPose = false;
+    }
+    haveFace = true;
+  }
+  return true;
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  if (!running) return;
+
+  if (landmarker && video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    try {
+      const result = landmarker.detectForVideo(video, performance.now());
+      const found = handleResult(result);
+      setStatus(found ? "ตรวจพบใบหน้า • กำลังติดตามสีหน้า" : "ไม่พบใบหน้า กรุณาหันหน้าเข้าหากล้อง");
+    } catch (e) {
+      console.error("Face detection error:", e);
+    }
+  }
+
+  // อัปเดตท่าทางหัว
+  head.visible = haveFace;
+  if (haveFace) {
+    head.position.lerp(targetPos, SMOOTH);
+    head.quaternion.slerp(targetQuat, SMOOTH);
+  }
+
+  // อัปเดต morph targets
+  for (const e of morphEntries) {
+    const target = haveFace ? (currentValues[e.key] || 0) : 0;
+    e.v += (target - e.v) * SMOOTH;
+    e.mesh.morphTargetInfluences[e.idx] = THREE.MathUtils.clamp(e.v, 0, 1);
+  }
+
+  // มิเตอร์
+  const v = currentValues;
+  setMeter("blinkL", v.eyeblinkleft);
+  setMeter("blinkR", v.eyeblinkright);
+  setMeter("jaw", v.jawopen);
+  setMeter("smile", Math.max(v.mouthsmileleft || 0, v.mouthsmileright || 0));
+
+  renderer.render(scene, camera);
+}
+
+/* ================== เริ่มระบบ ================== */
+async function start() {
+  startButton.disabled = true;
+
+  // 1) เปิดกล้องก่อน เพื่อให้เห็นภาพแน่ ๆ
+  try {
+    setStatus("กำลังขออนุญาตใช้กล้อง...");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("เบราว์เซอร์ไม่รองรับกล้อง (ต้องเปิดผ่าน https)");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = stream;
+    await video.play();
+    fitStage();
+    camButton.style.display = "block";
+  } catch (e) {
+    console.error(e);
+    setStatus("เปิดกล้องไม่สำเร็จ: " + (e.message || e), true);
+    startButton.disabled = false;
+    startButton.textContent = "ลองเริ่มใหม่";
+    return;
+  }
+
+  // 2) โมเดล (ถ้าพัง ยังเห็นกล้องอยู่)
+  try {
+    await loadModel();
+  } catch (e) {
+    console.error(e);
+    setStatus("โหลดโมเดลไม่สำเร็จ: " + (e.message || e), true);
+  }
+
+  // 3) ระบบตรวจจับสีหน้า
+  try {
+    await loadLandmarker();
+  } catch (e) {
+    console.error(e);
+    setStatus("โหลดระบบตรวจจับสีหน้าไม่สำเร็จ: " + (e.message || e), true);
+    startButton.disabled = false;
+    startButton.textContent = "ลองเริ่มใหม่";
+    return;
+  }
+
+  running = true;
+  setStatus("พร้อมแล้ว! ลองยิ้ม อ้าปาก และกะพริบตา");
+  startButton.textContent = "กำลังทำงาน";
+}
+
+startButton.addEventListener("click", start);
+
+camButton.addEventListener("click", () => {
+  const hidden = video.style.visibility === "hidden";
+  video.style.visibility = hidden ? "visible" : "hidden";
+  camButton.textContent = hidden ? "ซ่อนกล้อง" : "แสดงกล้อง";
+});
+
+requestAnimationFrame(loop);
+
+/* ================== โหมดจูน (กด T) ================== */
+let tuning = false;
+const f = (n) => (+n).toFixed(2);
+
+function showTuner() {
+  if (!tuning) { tuner.style.display = "none"; return; }
+  tuner.style.display = "block";
+  tuner.textContent =
+`โหมดจูนโมเดล (กด T เพื่อปิด)
+ลูกศร = ซ้าย/ขวา/ขึ้น/ลง | W/S = เข้า/ออก (ซม.)
+Q/E = หมุนซ้ายขวา(Y) | R/F = ก้ม/เงย(X) | Z/C = เอียง(Z) | +/- = ขนาด
+
+ค่าที่ได้ (นำไปใส่ CONFIG ในโค้ด):
+const CONFIG = { scale: ${f(CONFIG.scale)}, pos: [${CONFIG.pos.map(f)}], rot: [${CONFIG.rot.map(Math.round)}] };`;
+}
+
+window.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (k === "t") { tuning = !tuning; showTuner(); return; }
+  if (!tuning) return;
+
+  const mv = 0.5, rt = 5;
+  if (e.key === "ArrowLeft") CONFIG.pos[0] -= mv;
+  else if (e.key === "ArrowRight") CONFIG.pos[0] += mv;
+  else if (e.key === "ArrowUp") CONFIG.pos[1] += mv;
+  else if (e.key === "ArrowDown") CONFIG.pos[1] -= mv;
+  else if (k === "w") CONFIG.pos[2] += mv;
+  else if (k === "s") CONFIG.pos[2] -= mv;
+  else if (k === "q") CONFIG.rot[1] -= rt;
+  else if (k === "e") CONFIG.rot[1] += rt;
+  else if (k === "r") CONFIG.rot[0] -= rt;
+  else if (k === "f") CONFIG.rot[0] += rt;
+  else if (k === "z") CONFIG.rot[2] -= rt;
+  else if (k === "c") CONFIG.rot[2] += rt;
+  else if (e.key === "+" || e.key === "=") CONFIG.scale *= 1.05;
+  else if (e.key === "-") CONFIG.scale /= 1.05;
+  else return;
+
+  e.preventDefault();
+  applyConfig();
+  showTuner();
+});
+</script>
 </body>
 </html>
