@@ -3,102 +3,149 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Face Mesh Texture AR - Canonical Face UV</title>
+  <title>Face Texture AR | RainyNiJiKi2005</title>
+
+  <!-- A-Frame และ MindAR Face Tracking ตามโค้ดต้นแบบของอาจารย์ -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #101116; color: #fff; font-family: system-ui, sans-serif; }
-    a-scene { position: fixed; inset: 0; }
-    #panel {
-      position: fixed; z-index: 10; top: 12px; left: 12px; width: min(320px, calc(100vw - 24px));
-      max-height: calc(100dvh - 24px); overflow: auto; padding: 14px; border-radius: 14px;
-      background: rgba(15,17,24,.88); border: 1px solid rgba(255,255,255,.16); backdrop-filter: blur(10px);
-      font-size: 13px;
+    html, body {
+      margin: 0; width: 100%; height: 100%; overflow: hidden;
+      background: #101116; color: #fff; font-family: system-ui, sans-serif;
     }
-    h1 { margin: 0 0 6px; font-size: 17px; }
-    #status { margin: 8px 0 12px; color: #a9e7c1; line-height: 1.5; overflow-wrap: anywhere; }
-    .control { display: grid; grid-template-columns: 78px 1fr 42px; align-items: center; gap: 8px; margin: 9px 0; }
-    .control label { color: #e4e6ef; }
-    input[type=range] { width: 100%; }
-    output { text-align: right; color: #c5c9d8; font-variant-numeric: tabular-nums; }
-    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    button { color: white; background: #30364a; border: 1px solid #515b78; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
-    .hint { color: #b5bacb; line-height: 1.5; margin: 10px 0 0; }
-    @media (max-width: 480px) { #panel { top: 8px; left: 8px; width: min(290px, calc(100vw - 16px)); padding: 11px; } }
+    a-scene { position: fixed; inset: 0; width: 100%; height: 100%; }
+    #panel {
+      position: fixed; z-index: 10; top: 12px; left: 12px;
+      width: min(310px, calc(100vw - 24px)); padding: 14px;
+      border: 1px solid #ffffff30; border-radius: 14px;
+      background: #11131be8; backdrop-filter: blur(10px);
+    }
+    h1 { margin: 0 0 8px; font-size: 17px; }
+    #status { margin: 0 0 12px; color: #a9e7c1; font-size: 13px; line-height: 1.5; }
+    .control { display: grid; grid-template-columns: 76px 1fr 38px; gap: 8px; align-items: center; }
+    label, output { font-size: 13px; }
+    input { width: 100%; }
+    output { text-align: right; font-variant-numeric: tabular-nums; }
+    button {
+      margin-top: 12px; padding: 8px 11px; border: 1px solid #59627d;
+      border-radius: 8px; background: #30364a; color: white; cursor: pointer;
+    }
+    #showPanel { position: fixed; z-index: 11; top: 10px; left: 10px; margin: 0; }
+    .hint { margin: 10px 0 0; color: #c3c7d5; font-size: 12px; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <div id="panel">
-    <h1>Canonical Face Model · Texture AR</h1>
-    <div id="status">กำลังเตรียม Face Mesh และ UV Texture…</div>
-    <div class="control"><label for="opacity">ความทึบ</label><input id="opacity" type="range" min="0.1" max="1" step="0.05" value="1"><output id="opacityVal">1.00</output></div>
-    
-    
-    
-    
-    
-    <div class="buttons">
-      <button id="reset" type="button">คืนค่าความทึบ</button>
-      <button id="hidePanel" type="button">ซ่อนแผง</button>
+  <section id="panel">
+    <h1>Face Texture AR</h1>
+    <p id="status">กำลังเริ่มระบบติดตามใบหน้า…</p>
+    <div class="control">
+      <label for="opacity">ความทึบ</label>
+      <input id="opacity" type="range" min="0.1" max="1" step="0.05" value="0.85">
+      <output id="opacityValue">0.85</output>
     </div>
-    <p class="hint">ใช้ภาพ canonical_face_model_uv_visualization.png เป็น texture บน Face Mesh ที่ติดตามใบหน้าจริง ภาพ UV เป็นแผนที่พิกัด จึงจะแสดงเป็นลาย UV บนตาข่ายใบหน้า</p>
-  </div>
-  <button id="showPanel" type="button" style="display:none;position:fixed;z-index:11;top:10px;left:10px">แสดงแผงปรับค่า</button>
+    <button id="reset" type="button">คืนค่าความทึบ</button>
+    <button id="hide" type="button">ซ่อนแผง</button>
+    <p class="hint">แสดงภาพ canonical_face_model_uv_visualization.png บนตาข่ายใบหน้าที่ติดตามจากกล้อง</p>
+  </section>
+  <button id="showPanel" type="button" hidden>แสดงแผง</button>
 
   <a-scene
-    mindar-face="autoStart: true; uiLoading: no; uiError: no; uiScanning: no"
+    mindar-face="autoStart: true; faceOccluder: false; uiLoading: no; uiError: no; uiScanning: no"
     embedded
-    color-space="sRGB"
-    renderer="colorManagement: true, physicallyCorrectLights: true"
+    renderer="colorManagement: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
-    <a-assets timeout="20000">
-      <img id="faceTexture" src="./canonical_face_model_uv_visualization.png" crossorigin="anonymous">
-    </a-assets>
+    <a-entity id="face" mindar-face-default-face-occluder></a-entity>
     <a-camera active="false" position="0 0 0"></a-camera>
-    <a-entity id="faceAnchor" mindar-face-target="anchorIndex: 168">
-      <a-entity id="robot" gltf-model="#robotAsset" position="0 0 0" rotation="0 0 0" scale="0.25 0.25 0.25" visible="false"></a-entity>
-    </a-entity>
   </a-scene>
 
-    <script>
+  <script>
     (() => {
-      const status = document.getElementById('status');
-      const faceMesh = document.getElementById('faceMesh');
       const scene = document.querySelector('a-scene');
-      const opacity = document.getElementById('opacity');
-      const opacityVal = document.getElementById('opacityVal');
-      const texture = document.getElementById('faceTexture');
+      const face = document.querySelector('#face');
+      const status = document.querySelector('#status');
+      const opacityInput = document.querySelector('#opacity');
+      const opacityValue = document.querySelector('#opacityValue');
+      const panel = document.querySelector('#panel');
+      const showPanel = document.querySelector('#showPanel');
 
-      function applyOpacity() {
-        const value = Number(opacity.value);
-        opacityVal.textContent = value.toFixed(2);
-        faceMesh.setAttribute('material', 'opacity', value);
+      let faceMaterial = null;
+
+      function setStatus(message, color = '#a9e7c1') {
+        status.textContent = message;
+        status.style.color = color;
       }
-      opacity.addEventListener('input', applyOpacity);
-      document.getElementById('reset').addEventListener('click', () => {
-        opacity.value = '1';
-        applyOpacity();
+
+      function setOpacity() {
+        const value = Number(opacityInput.value);
+        opacityValue.textContent = value.toFixed(2);
+        if (faceMaterial) {
+          faceMaterial.opacity = value;
+          faceMaterial.needsUpdate = true;
+        }
+      }
+
+      opacityInput.addEventListener('input', setOpacity);
+      document.querySelector('#reset').addEventListener('click', () => {
+        opacityInput.value = '0.85';
+        setOpacity();
       });
-      texture.addEventListener('load', () => {
-        status.textContent = 'โหลดภาพ canonical_face_model_uv_visualization.png สำเร็จ';
-        status.style.color = '#a9e7c1';
+      document.querySelector('#hide').addEventListener('click', () => {
+        panel.hidden = true;
+        showPanel.hidden = false;
       });
-      texture.addEventListener('error', () => {
-        status.textContent = 'โหลดภาพ Texture ไม่สำเร็จ ตรวจสอบว่าไฟล์ PNG อยู่ในโฟลเดอร์หลักของ Repository';
-        status.style.color = '#ffaaa5';
+      showPanel.addEventListener('click', () => {
+        panel.hidden = false;
+        showPanel.hidden = true;
       });
+
       scene.addEventListener('arReady', () => {
-        status.textContent = 'กล้องพร้อมใช้งาน · Face Mesh กำลังติดตามใบหน้า';
-        status.style.color = '#a9e7c1';
+        const THREE = AFRAME.THREE;
+        const mesh = face.getObject3D('mesh');
+
+        if (!mesh || !mesh.material) {
+          setStatus('ไม่พบ Face Mesh จาก MindAR กรุณารีโหลดหน้าเว็บ', '#ffaaa5');
+          console.error('MindAR face mesh not found on #face');
+          return;
+        }
+
+        setStatus('กำลังโหลดภาพ UV Texture…');
+
+        // ใช้ไฟล์ PNG ของผู้ใช้จาก Repository เดียวกันโดยตรง
+        const textureUrl = new URL('./canonical_face_model_uv_visualization.png', window.location.href).href;
+        new THREE.TextureLoader().load(
+          textureUrl,
+          (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.flipY = false;
+            faceMaterial = new THREE.MeshBasicMaterial({
+              map: texture,
+              transparent: true,
+              opacity: Number(opacityInput.value),
+              side: THREE.DoubleSide,
+              depthWrite: false
+            });
+            mesh.material.dispose();
+            mesh.material = faceMaterial;
+            mesh.frustumCulled = false;
+            setStatus('พร้อมแล้ว: กำลังติดตามใบหน้าด้วยภาพ UV ของคุณ');
+          },
+          undefined,
+          (error) => {
+            console.error('Could not load face texture:', textureUrl, error);
+            setStatus('โหลดภาพ PNG ไม่สำเร็จ ตรวจสอบชื่อไฟล์และตำแหน่งใน Repository', '#ffaaa5');
+          }
+        );
       });
+
       scene.addEventListener('arError', (event) => {
-        status.textContent = 'เริ่มระบบ AR ไม่สำเร็จ กรุณาอนุญาตกล้องและเปิดผ่าน HTTPS หรือ localhost';
-        status.style.color = '#ffaaa5';
         console.error('MindAR error:', event);
+        setStatus('เปิดกล้องไม่สำเร็จ กรุณาอนุญาตสิทธิ์กล้องและเปิดผ่าน HTTPS', '#ffaaa5');
       });
-      applyOpacity();
+
+      setOpacity();
     })();
   </script>
 </body>
