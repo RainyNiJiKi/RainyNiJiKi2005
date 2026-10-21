@@ -36,28 +36,28 @@ function applyTransform(){
 }
 ['scale','rx','ry','rz'].forEach(id=>document.getElementById(id).addEventListener('input',applyTransform));
 function animateFace(raw,dt){
- const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.09);
+ const a=1-Math.exp(-Math.min(Math.max(dt,1/120),.05)/.065);
  for(const k of Object.keys(raw))smooth[k]=lerp(smooth[k]||0,raw[k]||0,a);
  const s=smooth, val=k=>s[k]||0;
- const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))/2);
- const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))/2,(val('browDownLeft')+val('browDownRight'))*.42));
- const jaw=clamp(val('jawOpen')), blinkL=clamp(val('eyeBlinkLeft')),blinkR=clamp(val('eyeBlinkRight'));
+ const smile=clamp((val('mouthSmileLeft')+val('mouthSmileRight'))/2*1.65);
+ const frown=clamp(Math.max((val('mouthFrownLeft')+val('mouthFrownRight'))/2*1.45,(val('browDownLeft')+val('browDownRight'))*.58));
+ const jaw=clamp(val('jawOpen')*1.9), mouthOpen=clamp(Math.max(val('jawOpen')*1.7,val('mouthFunnel')*.8,val('mouthStretchLeft')*.22+val('mouthStretchRight')*.22)), blinkL=clamp(val('eyeBlinkLeft')),blinkR=clamp(val('eyeBlinkRight'));
  for(const [name,side] of [['Pupil_L','L'],['Pupil_R','R']]){
   const o=get(name);if(!o)continue;
   const base=o.userData.base;
   const inward=val(side==='L'?'eyeLookInLeft':'eyeLookInRight'),outward=val(side==='L'?'eyeLookOutLeft':'eyeLookOutRight');
-  o.position.x=base.p.x+(side==='L'?inward-outward:outward-inward)*.045;
-  o.position.y=base.p.y+(val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight')-val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight'))*.035;
+  o.position.x=base.p.x+(side==='L'?inward-outward:outward-inward )*.065;
+  o.position.y=base.p.y+(val(side==='L'?'eyeLookUpLeft':'eyeLookUpRight')-val(side==='L'?'eyeLookDownLeft':'eyeLookDownRight') )*.05;
   o.scale.y=base.s.y*(1-(side==='L'?blinkL:blinkR)*.8);
  }
  for(const [name,down,up,dir] of [['Eyebrow_L','browDownLeft','browOuterUpLeft',-1],['Eyebrow_R','browDownRight','browOuterUpRight',1]]){
   const o=get(name);if(!o)continue;const b=o.userData.base;
-  o.position.y=b.p.y+val(up)*.035-val(down)*.055-frown*.018;
-  o.rotation.z=b.r.z+dir*(val(down)*.12-val(up)*.06+frown*.07);
+  o.position.y=b.p.y+val(up)*.075-val(down)*.095-frown*.025;
+  o.rotation.z=b.r.z+dir*(val(down)*.22-val(up)*.14+frown*.11);
  }
  const upper=get('Upper_lip'),lower=get('Lower_lip');
- if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*.22-frown*.12);upper.position.y=b.p.y+smile*.025-frown*.018;}
- if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*.15-frown*.08);lower.position.y=b.p.y-jaw*.035+smile*.018-frown*.018;lower.scale.y=b.s.y*(1+jaw*.25);}
+ if(upper){const b=upper.userData.base;upper.scale.x=b.s.x*(1+smile*.34-frown*.18);upper.scale.y=b.s.y*(1+smile*.10);upper.position.y=b.p.y+smile*.035+mouthOpen*.045-frown*.028;}
+ if(lower){const b=lower.userData.base;lower.scale.x=b.s.x*(1+smile*.28-frown*.12);lower.position.y=b.p.y-jaw*.095-mouthOpen*.055+smile*.025-frown*.03;lower.scale.y=b.s.y*(1+jaw*.48+mouthOpen*.22);}
 }
 async function start(){
  if(started)return;started=true;startButton.hidden=true;statusBox.textContent='กำลังเปิดกล้องและโหลด untitled.glb…';
