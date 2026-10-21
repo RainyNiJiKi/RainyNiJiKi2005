@@ -1,37 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Robot Fros - Face Tracking AR</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
   <style>
-    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
-    a-scene { width: 100%; height: 100%; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #101116; color: #fff; font-family: system-ui, sans-serif; }
+    a-scene { position: fixed; inset: 0; }
+    #panel {
+      position: fixed; z-index: 10; top: 12px; left: 12px; width: min(320px, calc(100vw - 24px));
+      max-height: calc(100dvh - 24px); overflow: auto; padding: 14px; border-radius: 14px;
+      background: rgba(15,17,24,.88); border: 1px solid rgba(255,255,255,.16); backdrop-filter: blur(10px);
+      font-size: 13px;
+    }
+    h1 { margin: 0 0 6px; font-size: 17px; }
+    #status { margin: 8px 0 12px; color: #a9e7c1; line-height: 1.5; overflow-wrap: anywhere; }
+    .control { display: grid; grid-template-columns: 78px 1fr 42px; align-items: center; gap: 8px; margin: 9px 0; }
+    .control label { color: #e4e6ef; }
+    input[type=range] { width: 100%; }
+    output { text-align: right; color: #c5c9d8; font-variant-numeric: tabular-nums; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button { color: white; background: #30364a; border: 1px solid #515b78; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+    .hint { color: #b5bacb; line-height: 1.5; margin: 10px 0 0; }
+    @media (max-width: 480px) { #panel { top: 8px; left: 8px; width: min(290px, calc(100vw - 16px)); padding: 11px; } }
   </style>
 </head>
 <body>
-  <a-scene mindar-face="faceOccluder: false" embedded vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-    <a-entity id="face" mindar-face-default-face-occluder></a-entity>
+  <div id="panel">
+    <h1>Robot Fros · Face AR</h1>
+    <div id="status">กำลังเตรียมระบบติดตามใบหน้า…</div>
+    <div class="control"><label for="scale">ขนาด</label><input id="scale" type="range" min="0.05" max="1.5" step="0.01" value="0.25"><output id="scaleVal">0.25</output></div>
+    <div class="control"><label for="posY">สูง / ต่ำ</label><input id="posY" type="range" min="-1" max="1" step="0.01" value="0"><output id="posYVal">0.00</output></div>
+    <div class="control"><label for="posZ">หน้า / หลัง</label><input id="posZ" type="range" min="-1" max="1" step="0.01" value="0"><output id="posZVal">0.00</output></div>
+    <div class="control"><label for="rotX">หมุน X</label><input id="rotX" type="range" min="-180" max="180" step="1" value="0"><output id="rotXVal">0°</output></div>
+    <div class="control"><label for="rotY">หมุน Y</label><input id="rotY" type="range" min="-180" max="180" step="1" value="0"><output id="rotYVal">0°</output></div>
+    <div class="control"><label for="rotZ">หมุน Z</label><input id="rotZ" type="range" min="-180" max="180" step="1" value="0"><output id="rotZVal">0°</output></div>
+    <div class="buttons">
+      <button id="reset" type="button">คืนค่าเริ่มต้น</button>
+      <button id="hidePanel" type="button">ซ่อนแผง</button>
+    </div>
+    <p class="hint">หากโมเดลไม่ตรงใบหน้า ให้ปรับขนาด ตำแหน่ง และแกนหมุนได้จากแผงนี้ ต้องเปิดผ่าน HTTPS (GitHub Pages) หรือ localhost และอนุญาตใช้กล้อง</p>
+  </div>
+  <button id="showPanel" type="button" style="display:none;position:fixed;z-index:11;top:10px;left:10px">แสดงแผงปรับค่า</button>
+
+  <a-scene
+    mindar-face="autoStart: true; uiLoading: no; uiError: no; uiScanning: no"
+    embedded
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+    <a-assets timeout="20000">
+      <a-asset-item id="robotAsset" src="./Robot%20Fros.glb"></a-asset-item>
+    </a-assets>
     <a-camera active="false" position="0 0 0"></a-camera>
+    <a-entity id="faceAnchor" mindar-face-target="anchorIndex: 168">
+      <a-entity id="robot" gltf-model="#robotAsset" position="0 0 0" rotation="0 0 0" scale="0.25 0.25 0.25" visible="false"></a-entity>
+    </a-entity>
   </a-scene>
 
   <script>
-    document.querySelector('a-scene').addEventListener('arReady', () => {
-      const THREE = AFRAME.THREE;
-      // เปลี่ยน URL นี้เป็นภาพ texture ของคุณ
-      const texture = new THREE.TextureLoader().load('https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/canonical_face_model_uv_visualization.png');
-      //const texture = new THREE.TextureLoader().load('https://sibsansuk.github.io/courses/3dmodel/canonical_face_model_uv_visualization-2.png');
-      texture.colorSpace = THREE.SRGBColorSpace;
+    (() => {
+      const status = document.getElementById('status');
+      const robot = document.getElementById('robot');
+      const scene = document.querySelector('a-scene');
+      const defaults = { scale: 0.25, posY: 0, posZ: 0, rotX: 0, rotY: 0, rotZ: 0 };
+      const ids = Object.keys(defaults);
 
-      // ใช้ face mesh ของ MindAR แล้วเปลี่ยนจากวัสดุบังหน้าเป็น texture
-      const mesh = document.querySelector('#face').getObject3D('mesh');
-      mesh.material.dispose();
-      mesh.material = new THREE.MeshBasicMaterial({
-        map: texture, transparent: true, opacity: 0.85, side: THREE.DoubleSide
+      function applyControls() {
+        const v = {};
+        for (const id of ids) {
+          const el = document.getElementById(id);
+          v[id] = Number(el.value);
+          document.getElementById(id + 'Val').textContent =
+            id === 'scale' ? v[id].toFixed(2) :
+            (id.startsWith('rot') ? Math.round(v[id]) + '°' : v[id].toFixed(2));
+        }
+        robot.setAttribute('scale', `${v.scale} ${v.scale} ${v.scale}`);
+        robot.setAttribute('position', `0 ${v.posY} ${v.posZ}`);
+        robot.setAttribute('rotation', `${v.rotX} ${v.rotY} ${v.rotZ}`);
+      }
+      ids.forEach(id => document.getElementById(id).addEventListener('input', applyControls));
+      document.getElementById('reset').addEventListener('click', () => {
+        for (const id of ids) document.getElementById(id).value = defaults[id];
+        applyControls();
       });
-      mesh.frustumCulled = false;
-    });
+      document.getElementById('hidePanel').addEventListener('click', () => {
+        document.getElementById('panel').style.display = 'none';
+        document.getElementById('showPanel').style.display = 'block';
+      });
+      document.getElementById('showPanel').addEventListener('click', () => {
+        document.getElementById('panel').style.display = 'block';
+        document.getElementById('showPanel').style.display = 'none';
+      });
+      robot.addEventListener('model-loaded', () => {
+        robot.setAttribute('visible', true);
+        status.textContent = 'โหลด Robot Fros.glb สำเร็จ · กำลังติดตามใบหน้า';
+        status.style.color = '#a9e7c1';
+        applyControls();
+      });
+      robot.addEventListener('model-error', (event) => {
+        status.textContent = 'โหลด Robot Fros.glb ไม่สำเร็จ ตรวจสอบชื่อไฟล์และการโหลดไฟล์จาก GitHub Pages';
+        status.style.color = '#ffaaa5';
+        console.error('Robot model load error:', event);
+      });
+      scene.addEventListener('arReady', () => {
+        if (robot.getObject3D('mesh')) status.textContent = 'กล้องพร้อมใช้งาน · กำลังติดตามใบหน้า';
+      });
+      scene.addEventListener('arError', (event) => {
+        status.textContent = 'เริ่มระบบ AR ไม่สำเร็จ กรุณาอนุญาตกล้องและเปิดผ่าน HTTPS หรือ localhost';
+        status.style.color = '#ffaaa5';
+        console.error('MindAR error:', event);
+      });
+      applyControls();
+    })();
   </script>
 </body>
 </html>
