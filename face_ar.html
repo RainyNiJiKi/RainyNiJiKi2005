@@ -1,37 +1,72 @@
 <!doctype html>
 <html lang="th">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Low-poly Face Mask AR</title>
-<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
-<style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#171416;font-family:system-ui,sans-serif}
-#status{position:fixed;z-index:5;top:10px;left:10px;right:10px;text-align:center;color:white;background:#0008;padding:9px;border-radius:10px}
-#controls{position:fixed;z-index:5;bottom:12px;left:8px;right:8px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
-button{padding:10px 13px;border:0;border-radius:9px;background:#eee4e4;color:#251c20}
-</style></head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Low-poly Face Mask AR</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-serif;background:#161416}
+    #panel{position:fixed;z-index:10;left:12px;right:12px;bottom:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+    button{border:0;border-radius:10px;padding:10px 14px;background:#eee4e4;color:#251c20;font-size:14px}
+    #status{position:fixed;z-index:10;top:12px;left:12px;right:12px;text-align:center;color:white;text-shadow:0 1px 4px #000;background:#0007;padding:9px;border-radius:10px;font-size:14px}
+  </style>
+</head>
 <body>
-<div id="status">กำลังเริ่มระบบติดตามใบหน้า…</div>
-<div id="controls">
-<button onclick="adjust('s',-.05)">เล็กลง</button><button onclick="adjust('s',.05)">ใหญ่ขึ้น</button>
-<button onclick="adjust('y',-.02)">เลื่อนขึ้น</button><button onclick="adjust('y',.02)">เลื่อนลง</button>
-<button onclick="resetMask()">รีเซ็ต</button>
-</div>
-<a-scene mindar-face="autoStart: true; uiLoading: no; uiError: no; uiScanning: no;" embedded
-renderer="colorManagement: true" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-<a-assets><a-asset-item id="maskModel" src="./face_mask_ar.glb"></a-asset-item></a-assets>
-<a-entity mindar-face-target="anchorIndex: 168">
-<a-gltf-model id="mask" src="#maskModel" position="0 0 0.02" rotation="0 0 0" scale="0.58 0.58 0.58"></a-gltf-model>
-</a-entity><a-camera active="true" position="0 0 0"></a-camera></a-scene>
-<script>
-const mask=document.querySelector('#mask'), statusBox=document.querySelector('#status');
-let scale=.58, y=0;
-function apply(){mask.setAttribute('scale',scale+' '+scale+' '+scale);mask.setAttribute('position','0 '+y+' 0.02')}
-function adjust(type,delta){if(type==='s')scale=Math.max(.15,Math.min(1.4,scale+delta));else y=Math.max(-.3,Math.min(.3,y+delta));apply()}
-function resetMask(){scale=.58;y=0;apply()}
-window.adjust=adjust;window.resetMask=resetMask;
-document.querySelector('a-scene').addEventListener('arReady',()=>statusBox.textContent='ตรวจพบใบหน้าแล้ว');
-document.querySelector('a-scene').addEventListener('arError',()=>statusBox.textContent='เปิดกล้องไม่สำเร็จ: อนุญาตกล้องและเปิดเว็บผ่าน HTTPS');
-mask.addEventListener('model-error',()=>statusBox.textContent='ไม่พบ face_mask_ar.glb กรุณาอัปโหลดไว้โฟลเดอร์เดียวกับ HTML');
-</script></body></html>
+  <div id="status">กำลังเริ่มระบบติดตามใบหน้า…</div>
+  <div id="panel">
+    <button onclick="adjust('scale',-0.05)">เล็กลง</button>
+    <button onclick="adjust('scale',0.05)">ใหญ่ขึ้น</button>
+    <button onclick="adjust('y',-0.02)">เลื่อนขึ้น</button>
+    <button onclick="adjust('y',0.02)">เลื่อนลง</button>
+    <button onclick="resetMask()">รีเซ็ต</button>
+  </div>
+  <a-scene
+    mindar-face="autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+    embedded
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+    <a-assets>
+      <a-asset-item id="maskModel" src="./face_mask_ar.glb"></a-asset-item>
+    </a-assets>
+    <!-- Anchor near the center of the face. Fine-tune position/scale with the controls. -->
+    <a-entity mindar-face-target="anchorIndex: 168">
+      <a-gltf-model id="mask" src="#maskModel" position="0 0 0.02" rotation="0 0 0" scale="0.58 0.58 0.58"></a-gltf-model>
+    </a-entity>
+    <a-camera active="true" position="0 0 0"></a-camera>
+  </a-scene>
+  <script>
+    const mask = document.querySelector('#mask');
+    const status = document.querySelector('#status');
+    let baseScale = 0.58, offsetY = 0;
+    function applyAdjustments(){
+      if (!mask) return;
+      mask.setAttribute('scale', `${baseScale} ${baseScale} ${baseScale}`);
+      mask.setAttribute('position', `0 ${offsetY} 0.02`);
+    }
+    function adjust(kind, amount){
+      if(kind === 'scale') baseScale = Math.max(0.15, Math.min(1.4, baseScale + amount));
+      if(kind === 'y') offsetY = Math.max(-0.3, Math.min(0.3, offsetY + amount));
+      applyAdjustments();
+    }
+    function resetMask(){ baseScale = 0.58; offsetY = 0; applyAdjustments(); }
+    window.adjust = adjust;
+    window.resetMask = resetMask;
+    document.querySelector('a-scene').addEventListener('renderstart', () => {
+      status.textContent = 'เปิดกล้องแล้ว — ขยับหน้าเพื่อทดสอบตำแหน่งหน้ากาก';
+    });
+    document.querySelector('a-scene').addEventListener('arReady', () => {
+      status.textContent = 'ตรวจพบใบหน้าแล้ว';
+    });
+    document.querySelector('a-scene').addEventListener('arError', () => {
+      status.textContent = 'เปิดกล้องไม่สำเร็จ กรุณาอนุญาต Camera และเปิดเว็บผ่าน HTTPS';
+    });
+    mask.addEventListener('model-error', () => {
+      status.textContent = 'ไม่พบ face_mask_ar.glb กรุณาอัปโหลดไว้โฟลเดอร์เดียวกับไฟล์ HTML';
+    });
+  </script>
+</body>
+</html>
