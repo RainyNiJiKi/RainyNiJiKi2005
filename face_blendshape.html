@@ -108,7 +108,7 @@ function fitStage() {
 window.addEventListener("resize", fitStage); video.addEventListener("loadedmetadata", fitStage); fitStage();
 
 const ARKIT = ["browDownLeft","browDownRight","browInnerUp","browOuterUpLeft","browOuterUpRight","cheekPuff","cheekSquintLeft","cheekSquintRight","eyeBlinkLeft","eyeBlinkRight","eyeLookDownLeft","eyeLookDownRight","eyeLookInLeft","eyeLookInRight","eyeLookOutLeft","eyeLookOutRight","eyeLookUpLeft","eyeLookUpRight","eyeSquintLeft","eyeSquintRight","eyeWideLeft","eyeWideRight","jawForward","jawLeft","jawOpen","jawRight","mouthClose","mouthDimpleLeft","mouthDimpleRight","mouthFrownLeft","mouthFrownRight","mouthFunnel","mouthLeft","mouthLowerDownLeft","mouthLowerDownRight","mouthPressLeft","mouthPressRight","mouthPucker","mouthRight","mouthRollLower","mouthRollUpper","mouthShrugLower","mouthShrugUpper","mouthSmileLeft","mouthSmileRight","mouthStretchLeft","mouthStretchRight","mouthUpperUpLeft","mouthUpperUpRight","noseSneerLeft","noseSneerRight"];
-function normalize(name) { return name.trim().replace(/[_\\-. ]+/g, "").toLowerCase(); }
+function normalize(name) { return name.trim().replace(/[_ .-]+/g, "").toLowerCase(); }
 const ARKIT_NORM = new Set(ARKIT.map(normalize));
 function matchKey(morphName) {
   const n = normalize(morphName), candidates = [n, n.replace(/l$/, "left"), n.replace(/r$/, "right")];
