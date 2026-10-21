@@ -7,7 +7,11 @@
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
   <style>
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-serif;background:#161416}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-serif;background:transparent}
+    a-scene{position:fixed!important;inset:0;width:100vw;height:100dvh;z-index:1}
+    video{object-fit:cover}
+    .mindar-ui-overlay{z-index:5}
+    canvas.a-canvas{background:transparent!important}
     #panel{position:fixed;z-index:10;left:12px;right:12px;bottom:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
     button{border:0;border-radius:10px;padding:10px 14px;background:#eee4e4;color:#251c20;font-size:14px}
     #status{position:fixed;z-index:10;top:12px;left:12px;right:12px;text-align:center;color:white;text-shadow:0 1px 4px #000;background:#0007;padding:9px;border-radius:10px;font-size:14px}
@@ -36,7 +40,7 @@
     <a-entity mindar-face-target="anchorIndex: 168">
       <a-gltf-model id="mask" src="#maskModel" position="0 0 0.02" rotation="0 0 0" scale="0.58 0.58 0.58"></a-gltf-model>
     </a-entity>
-    <a-camera active="true" position="0 0 0"></a-camera>
+    <a-camera active="false" position="0 0 0" look-controls="enabled: false"></a-camera>
   </a-scene>
   <script>
     const mask = document.querySelector('#mask');
