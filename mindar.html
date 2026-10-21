@@ -1,110 +1,48 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My MindAR Project</title>
 
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+<a-assets timeout="15000">
+  <a-asset-item
+    id="model0"
+    src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/etrian_odyssey_3_monk.glb">
+  </a-asset-item>
 
-  <script>
-    // Normalize Matilda's size and origin so it remains visible even if
-    // the GLB was exported with an unusually large scale or offset origin.
-    AFRAME.registerComponent('normalize-gltf', {
-      schema: { height: { type: 'number', default: 0.8 } },
-      init: function () {
-        this.el.addEventListener('model-loaded', () => {
-          const root = this.el.getObject3D('mesh');
-          if (!root) {
-            console.error('Matilda: model-loaded fired but no mesh was found.');
-            return;
-          }
+  <a-asset-item
+    id="model1"
+    src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/jiggly_watermelon_jello.glb">
+  </a-asset-item>
 
-          const bounds = new THREE.Box3().setFromObject(root);
-          if (bounds.isEmpty()) {
-            console.error('Matilda: the GLB loaded but contains no visible geometry.');
-            return;
-          }
+  <a-asset-item
+    id="model2"
+    src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/bird_orange.glb">
+  </a-asset-item>
+</a-assets>
 
-          const size = new THREE.Vector3();
-          const center = new THREE.Vector3();
-          bounds.getSize(size);
-          bounds.getCenter(center);
-          const largestDimension = Math.max(size.x, size.y, size.z);
+<!-- Target 1: Monk -->
+<a-entity mindar-image-target="targetIndex: 0">
+  <a-gltf-model
+    src="#model0"
+    position="0 0 0"
+    rotation="0 0 0"
+    scale="0.5 0.5 0.5">
+  </a-gltf-model>
+</a-entity>
 
-          if (!Number.isFinite(largestDimension) || largestDimension <= 0) {
-            console.error('Matilda: invalid model dimensions.', size);
-            return;
-          }
+<!-- Target 2: Watermelon Jello -->
+<a-entity mindar-image-target="targetIndex: 1">
+  <a-gltf-model
+    src="#model1"
+    position="0 0 0"
+    rotation="0 0 0"
+    scale="0.5 0.5 0.5">
+  </a-gltf-model>
+</a-entity>
 
-          const factor = this.data.height / largestDimension;
-          this.el.object3D.scale.setScalar(factor);
-          this.el.object3D.position.set(
-            -center.x * factor,
-            -center.y * factor,
-            -center.z * factor
-          );
-          console.info('Matilda loaded and normalized:', { size, factor });
-        });
+<!-- Target 3: Orange Bird -->
+<a-entity mindar-image-target="targetIndex: 2">
+  <a-gltf-model
+    src="#model2"
+    position="0 0 0"
+    rotation="0 0 0"
+    scale="0.5 0.5 0.5">
+  </a-gltf-model>
+</a-entity>
 
-        this.el.addEventListener('model-error', (event) => {
-          console.error('Failed to load matilda.glb:', event.detail || event);
-        });
-      }
-    });
-  </script>
-</head>
-
-<body>
-  <a-scene
-    mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 3;"
-    color-space="sRGB"
-    renderer="colorManagement: true"
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
-
-    <a-assets timeout="60000">
-      <a-asset-item id="monk" src="./etrian_odyssey_3_monk.glb"></a-asset-item>
-      <a-asset-item id="jello" src="./jiggly_watermelon_jello.glb"></a-asset-item>
-      <a-asset-item id="matilda" src="./matilda.glb"></a-asset-item>
-    </a-assets>
-
-    <!-- Target 1: Monk -->
-    <a-entity mindar-image-target="targetIndex: 0">
-      <a-gltf-model
-        src="#monk"
-        position="0 0 0"
-        rotation="90 0 0"
-        scale="0.5 0.5 0.5"
-        animation-mixer>
-      </a-gltf-model>
-    </a-entity>
-
-    <!-- Target 2: Watermelon Jello -->
-    <a-entity mindar-image-target="targetIndex: 1">
-      <a-gltf-model
-        src="#jello"
-        position="0 0 0"
-        rotation="90 0 0"
-        scale="0.5 0.5 0.5"
-        animation-mixer>
-      </a-gltf-model>
-    </a-entity>
-
-    <!-- Target 3: Matilda -->
-    <a-entity mindar-image-target="targetIndex: 2">
-      <a-gltf-model
-        src="#matilda"
-        position="0 0 0"
-        rotation="90 0 0"
-        normalize-gltf="height: 0.3"
-        animation-mixer>
-      </a-gltf-model>
-    </a-entity>
-
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-  </a-scene>
-</body>
-</html>
