@@ -3,140 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Face Texture AR | RainyNiJiKi2005</title>
-
+  <title>Face Mesh Texture AR</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
-
   <style>
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; width: 100%; height: 100%; overflow: hidden;
-      background: #111; font-family: system-ui, sans-serif;
-    }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
     a-scene { width: 100%; height: 100%; }
-    #panel {
-      position: fixed; z-index: 10; top: 12px; left: 12px;
-      width: min(310px, calc(100vw - 24px)); padding: 14px;
-      color: #fff; background: rgba(20, 22, 30, .88);
-      border: 1px solid rgba(255,255,255,.18); border-radius: 12px;
-      backdrop-filter: blur(8px);
+    #msg {
+      position: fixed; z-index: 10; left: 12px; bottom: 12px; right: 12px;
+      padding: 8px 12px; border-radius: 10px; background: #000a; color: #fff;
+      font: 13px/1.4 system-ui, sans-serif; pointer-events: none;
     }
-    h1 { font-size: 17px; margin: 0 0 8px; }
-    #status { font-size: 13px; line-height: 1.5; margin: 0 0 12px; color: #b9edca; }
-    .control { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-    input { flex: 1; min-width: 0; }
-    button {
-      margin-top: 12px; padding: 8px 11px; border: 1px solid #68708a;
-      border-radius: 8px; background: #34394b; color: white; cursor: pointer;
-    }
-    .hint { margin: 10px 0 0; color: #c2c5d0; font-size: 12px; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <div id="panel">
-    <h1>Face Texture AR</h1>
-    <p id="status">กำลังเปิดกล้องและโหลดภาพ UV…</p>
-    <div class="control">
-      <label for="opacity">ความทึบ</label>
-      <input id="opacity" type="range" min="0.1" max="1" step="0.05" value="0.85">
-      <span id="opacityValue">0.85</span>
-    </div>
-    <button id="reset" type="button">คืนค่าความทึบ</button>
-    <p class="hint">แสดงภาพ canonical face model UV บนตาข่ายใบหน้าที่ติดตามจากกล้อง ไม่ใช้โมเดล 3D อื่น</p>
-  </div>
+  <div id="msg">กำลังเตรียมกล้อง… (กรุณากดอนุญาตการใช้กล้อง)</div>
 
-  <a-scene
-    mindar-face="faceOccluder: false"
-    embedded
-    vr-mode-ui="enabled: false"
-    device-orientation-permission-ui="enabled: false">
+  <a-scene mindar-face="faceOccluder: false" embedded vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
     <a-entity id="face" mindar-face-default-face-occluder></a-entity>
     <a-camera active="false" position="0 0 0"></a-camera>
   </a-scene>
 
   <script>
-    (() => {
-      const scene = document.querySelector('a-scene');
-      const face = document.querySelector('#face');
-      const status = document.querySelector('#status');
-      const opacityInput = document.querySelector('#opacity');
-      const opacityValue = document.querySelector('#opacityValue');
+    // ====== ตั้งค่าของคุณ ======
+    // ไฟล์ภาพ texture ที่อัปโหลดไว้ใน repo (อยู่โฟลเดอร์เดียวกับไฟล์นี้)
+    // ถ้าจะใช้รูปอื่น ให้อัปโหลดแล้วเปลี่ยนชื่อไฟล์ตรงนี้
+    const TEXTURE_URL = './canonical_face_model_uv_visualization.png';
+    // ภาพสำรอง กรณีไฟล์ด้านบนโหลดไม่ได้
+    const FALLBACK_URL = 'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/canonical_face_model_uv_visualization.png';
+    const OPACITY = 0.85;   // 0 = โปร่งใส, 1 = ทึบ
+    // ===========================
 
-      let faceMaterial = null;
+    const msg = document.getElementById('msg');
 
-      function setStatus(message, color = '#b9edca') {
-        status.textContent = message;
-        status.style.color = color;
-      }
+    document.querySelector('a-scene').addEventListener('arReady', () => {
+      const THREE = AFRAME.THREE;
+      const loader = new THREE.TextureLoader();
 
-      function updateOpacity() {
-        const value = Number(opacityInput.value);
-        opacityValue.textContent = value.toFixed(2);
-        if (faceMaterial) {
-          faceMaterial.opacity = value;
-          faceMaterial.needsUpdate = true;
+      const applyTexture = (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const mesh = document.querySelector('#face').getObject3D('mesh');
+        if (!mesh) { msg.textContent = 'ไม่พบ face mesh ลองรีเฟรชหน้าเว็บ'; return; }
+        // เปลี่ยนวัสดุบังหน้าเป็น texture ของเรา (ไม่มีโมเดล .glb เข้ามาเกี่ยวข้อง)
+        mesh.material.dispose();
+        mesh.material = new THREE.MeshBasicMaterial({
+          map: texture, transparent: true, opacity: OPACITY, side: THREE.DoubleSide
+        });
+        mesh.frustumCulled = false;
+        msg.textContent = 'พร้อมใช้งาน · หันหน้าเข้าหากล้อง';
+        setTimeout(() => { msg.style.display = 'none'; }, 3000);
+      };
+
+      loader.load(
+        TEXTURE_URL,
+        applyTexture,
+        undefined,
+        () => {
+          console.warn('โหลด', TEXTURE_URL, 'ไม่ได้ ใช้ภาพสำรองแทน');
+          msg.textContent = 'โหลดภาพ ' + TEXTURE_URL + ' ไม่ได้ กำลังใช้ภาพสำรอง';
+          loader.load(FALLBACK_URL, applyTexture, undefined, () => {
+            msg.textContent = 'โหลดภาพ texture ไม่สำเร็จ ตรวจชื่อไฟล์และอินเทอร์เน็ต';
+          });
         }
-      }
-
-      opacityInput.addEventListener('input', updateOpacity);
-      document.querySelector('#reset').addEventListener('click', () => {
-        opacityInput.value = '0.85';
-        updateOpacity();
-      });
-
-      scene.addEventListener('arReady', () => {
-        const THREE = AFRAME.THREE;
-        const textureUrl = new URL('./canonical_face_model_uv_visualization.png', window.location.href).href;
-        const loader = new THREE.TextureLoader();
-
-        loader.load(
-          textureUrl,
-          (texture) => {
-            texture.colorSpace = THREE.SRGBColorSpace;
-            texture.flipY = false;
-
-            const mesh = face.getObject3D('mesh');
-            if (!mesh) {
-              setStatus('ไม่พบ Face Mesh จาก MindAR กรุณารีเฟรชหน้าเว็บ', '#ffaaa5');
-              console.error('MindAR face mesh was not found on #face.');
-              return;
-            }
-
-            if (mesh.material) {
-              if (Array.isArray(mesh.material)) {
-                mesh.material.forEach((material) => material.dispose());
-              } else {
-                mesh.material.dispose();
-              }
-            }
-
-            faceMaterial = new THREE.MeshBasicMaterial({
-              map: texture,
-              transparent: true,
-              opacity: Number(opacityInput.value),
-              side: THREE.DoubleSide,
-              depthWrite: false
-            });
-
-            mesh.material = faceMaterial;
-            mesh.frustumCulled = false;
-            updateOpacity();
-            setStatus('กล้องพร้อมแล้ว · กำลังแสดงภาพ UV บนใบหน้า');
-          },
-          undefined,
-          (error) => {
-            console.error('Could not load face texture:', error);
-            setStatus('โหลดภาพ PNG ไม่สำเร็จ ตรวจสอบชื่อไฟล์และตำแหน่งใน GitHub', '#ffaaa5');
-          }
-        );
-      });
-
-      scene.addEventListener('arError', (event) => {
-        console.error('MindAR error:', event);
-        setStatus('เปิด AR ไม่สำเร็จ กรุณาอนุญาตใช้กล้องและเปิดผ่าน HTTPS', '#ffaaa5');
-      });
-    })();
+      );
+    });
   </script>
 </body>
 </html>
