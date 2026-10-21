@@ -2,10 +2,9 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Face Texture AR | RainyNiJiKi2005</title>
 
-  <!-- A-Frame และ MindAR Face Tracking ตามโค้ดต้นแบบของอาจารย์ -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
 
@@ -13,48 +12,43 @@
     * { box-sizing: border-box; }
     html, body {
       margin: 0; width: 100%; height: 100%; overflow: hidden;
-      background: #101116; color: #fff; font-family: system-ui, sans-serif;
+      background: #111; font-family: system-ui, sans-serif;
     }
-    a-scene { position: fixed; inset: 0; width: 100%; height: 100%; }
+    a-scene { width: 100%; height: 100%; }
     #panel {
       position: fixed; z-index: 10; top: 12px; left: 12px;
       width: min(310px, calc(100vw - 24px)); padding: 14px;
-      border: 1px solid #ffffff30; border-radius: 14px;
-      background: #11131be8; backdrop-filter: blur(10px);
+      color: #fff; background: rgba(20, 22, 30, .88);
+      border: 1px solid rgba(255,255,255,.18); border-radius: 12px;
+      backdrop-filter: blur(8px);
     }
-    h1 { margin: 0 0 8px; font-size: 17px; }
-    #status { margin: 0 0 12px; color: #a9e7c1; font-size: 13px; line-height: 1.5; }
-    .control { display: grid; grid-template-columns: 76px 1fr 38px; gap: 8px; align-items: center; }
-    label, output { font-size: 13px; }
-    input { width: 100%; }
-    output { text-align: right; font-variant-numeric: tabular-nums; }
+    h1 { font-size: 17px; margin: 0 0 8px; }
+    #status { font-size: 13px; line-height: 1.5; margin: 0 0 12px; color: #b9edca; }
+    .control { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    input { flex: 1; min-width: 0; }
     button {
-      margin-top: 12px; padding: 8px 11px; border: 1px solid #59627d;
-      border-radius: 8px; background: #30364a; color: white; cursor: pointer;
+      margin-top: 12px; padding: 8px 11px; border: 1px solid #68708a;
+      border-radius: 8px; background: #34394b; color: white; cursor: pointer;
     }
-    #showPanel { position: fixed; z-index: 11; top: 10px; left: 10px; margin: 0; }
-    .hint { margin: 10px 0 0; color: #c3c7d5; font-size: 12px; line-height: 1.5; }
+    .hint { margin: 10px 0 0; color: #c2c5d0; font-size: 12px; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <section id="panel">
+  <div id="panel">
     <h1>Face Texture AR</h1>
-    <p id="status">กำลังเริ่มระบบติดตามใบหน้า…</p>
+    <p id="status">กำลังเปิดกล้องและโหลดภาพ UV…</p>
     <div class="control">
       <label for="opacity">ความทึบ</label>
       <input id="opacity" type="range" min="0.1" max="1" step="0.05" value="0.85">
-      <output id="opacityValue">0.85</output>
+      <span id="opacityValue">0.85</span>
     </div>
     <button id="reset" type="button">คืนค่าความทึบ</button>
-    <button id="hide" type="button">ซ่อนแผง</button>
-    <p class="hint">แสดงภาพ canonical_face_model_uv_visualization.png บนตาข่ายใบหน้าที่ติดตามจากกล้อง</p>
-  </section>
-  <button id="showPanel" type="button" hidden>แสดงแผง</button>
+    <p class="hint">แสดงภาพ canonical face model UV บนตาข่ายใบหน้าที่ติดตามจากกล้อง ไม่ใช้โมเดล 3D อื่น</p>
+  </div>
 
   <a-scene
-    mindar-face="autoStart: true; faceOccluder: false; uiLoading: no; uiError: no; uiScanning: no"
+    mindar-face="faceOccluder: false"
     embedded
-    renderer="colorManagement: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
     <a-entity id="face" mindar-face-default-face-occluder></a-entity>
@@ -68,17 +62,15 @@
       const status = document.querySelector('#status');
       const opacityInput = document.querySelector('#opacity');
       const opacityValue = document.querySelector('#opacityValue');
-      const panel = document.querySelector('#panel');
-      const showPanel = document.querySelector('#showPanel');
 
       let faceMaterial = null;
 
-      function setStatus(message, color = '#a9e7c1') {
+      function setStatus(message, color = '#b9edca') {
         status.textContent = message;
         status.style.color = color;
       }
 
-      function setOpacity() {
+      function updateOpacity() {
         const value = Number(opacityInput.value);
         opacityValue.textContent = value.toFixed(2);
         if (faceMaterial) {
@@ -87,39 +79,38 @@
         }
       }
 
-      opacityInput.addEventListener('input', setOpacity);
+      opacityInput.addEventListener('input', updateOpacity);
       document.querySelector('#reset').addEventListener('click', () => {
         opacityInput.value = '0.85';
-        setOpacity();
-      });
-      document.querySelector('#hide').addEventListener('click', () => {
-        panel.hidden = true;
-        showPanel.hidden = false;
-      });
-      showPanel.addEventListener('click', () => {
-        panel.hidden = false;
-        showPanel.hidden = true;
+        updateOpacity();
       });
 
       scene.addEventListener('arReady', () => {
         const THREE = AFRAME.THREE;
-        const mesh = face.getObject3D('mesh');
-
-        if (!mesh || !mesh.material) {
-          setStatus('ไม่พบ Face Mesh จาก MindAR กรุณารีโหลดหน้าเว็บ', '#ffaaa5');
-          console.error('MindAR face mesh not found on #face');
-          return;
-        }
-
-        setStatus('กำลังโหลดภาพ UV Texture…');
-
-        // ใช้ไฟล์ PNG ของผู้ใช้จาก Repository เดียวกันโดยตรง
         const textureUrl = new URL('./canonical_face_model_uv_visualization.png', window.location.href).href;
-        new THREE.TextureLoader().load(
+        const loader = new THREE.TextureLoader();
+
+        loader.load(
           textureUrl,
           (texture) => {
             texture.colorSpace = THREE.SRGBColorSpace;
             texture.flipY = false;
+
+            const mesh = face.getObject3D('mesh');
+            if (!mesh) {
+              setStatus('ไม่พบ Face Mesh จาก MindAR กรุณารีเฟรชหน้าเว็บ', '#ffaaa5');
+              console.error('MindAR face mesh was not found on #face.');
+              return;
+            }
+
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach((material) => material.dispose());
+              } else {
+                mesh.material.dispose();
+              }
+            }
+
             faceMaterial = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
@@ -127,25 +118,24 @@
               side: THREE.DoubleSide,
               depthWrite: false
             });
-            mesh.material.dispose();
+
             mesh.material = faceMaterial;
             mesh.frustumCulled = false;
-            setStatus('พร้อมแล้ว: กำลังติดตามใบหน้าด้วยภาพ UV ของคุณ');
+            updateOpacity();
+            setStatus('กล้องพร้อมแล้ว · กำลังแสดงภาพ UV บนใบหน้า');
           },
           undefined,
           (error) => {
-            console.error('Could not load face texture:', textureUrl, error);
-            setStatus('โหลดภาพ PNG ไม่สำเร็จ ตรวจสอบชื่อไฟล์และตำแหน่งใน Repository', '#ffaaa5');
+            console.error('Could not load face texture:', error);
+            setStatus('โหลดภาพ PNG ไม่สำเร็จ ตรวจสอบชื่อไฟล์และตำแหน่งใน GitHub', '#ffaaa5');
           }
         );
       });
 
       scene.addEventListener('arError', (event) => {
         console.error('MindAR error:', event);
-        setStatus('เปิดกล้องไม่สำเร็จ กรุณาอนุญาตสิทธิ์กล้องและเปิดผ่าน HTTPS', '#ffaaa5');
+        setStatus('เปิด AR ไม่สำเร็จ กรุณาอนุญาตใช้กล้องและเปิดผ่าน HTTPS', '#ffaaa5');
       });
-
-      setOpacity();
     })();
   </script>
 </body>
