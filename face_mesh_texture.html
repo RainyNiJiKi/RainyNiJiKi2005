@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Robot Fros - Face Tracking AR</title>
+  <title>Face Mesh Texture AR - Canonical Face UV</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
   <style>
@@ -30,19 +30,19 @@
 </head>
 <body>
   <div id="panel">
-    <h1>Robot Fros · Face AR</h1>
-    <div id="status">กำลังเตรียมระบบติดตามใบหน้า…</div>
-    <div class="control"><label for="scale">ขนาด</label><input id="scale" type="range" min="0.05" max="1.5" step="0.01" value="0.25"><output id="scaleVal">0.25</output></div>
-    <div class="control"><label for="posY">สูง / ต่ำ</label><input id="posY" type="range" min="-1" max="1" step="0.01" value="0"><output id="posYVal">0.00</output></div>
-    <div class="control"><label for="posZ">หน้า / หลัง</label><input id="posZ" type="range" min="-1" max="1" step="0.01" value="0"><output id="posZVal">0.00</output></div>
-    <div class="control"><label for="rotX">หมุน X</label><input id="rotX" type="range" min="-180" max="180" step="1" value="0"><output id="rotXVal">0°</output></div>
-    <div class="control"><label for="rotY">หมุน Y</label><input id="rotY" type="range" min="-180" max="180" step="1" value="0"><output id="rotYVal">0°</output></div>
-    <div class="control"><label for="rotZ">หมุน Z</label><input id="rotZ" type="range" min="-180" max="180" step="1" value="0"><output id="rotZVal">0°</output></div>
+    <h1>Canonical Face Model · Texture AR</h1>
+    <div id="status">กำลังเตรียม Face Mesh และ UV Texture…</div>
+    <div class="control"><label for="opacity">ความทึบ</label><input id="opacity" type="range" min="0.1" max="1" step="0.05" value="1"><output id="opacityVal">1.00</output></div>
+    
+    
+    
+    
+    
     <div class="buttons">
-      <button id="reset" type="button">คืนค่าเริ่มต้น</button>
+      <button id="reset" type="button">คืนค่าความทึบ</button>
       <button id="hidePanel" type="button">ซ่อนแผง</button>
     </div>
-    <p class="hint">หากโมเดลไม่ตรงใบหน้า ให้ปรับขนาด ตำแหน่ง และแกนหมุนได้จากแผงนี้ ต้องเปิดผ่าน HTTPS (GitHub Pages) หรือ localhost และอนุญาตใช้กล้อง</p>
+    <p class="hint">ใช้ภาพ canonical_face_model_uv_visualization.png เป็น texture บน Face Mesh ที่ติดตามใบหน้าจริง ภาพ UV เป็นแผนที่พิกัด จึงจะแสดงเป็นลาย UV บนตาข่ายใบหน้า</p>
   </div>
   <button id="showPanel" type="button" style="display:none;position:fixed;z-index:11;top:10px;left:10px">แสดงแผงปรับค่า</button>
 
@@ -54,7 +54,7 @@
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
     <a-assets timeout="20000">
-      <a-asset-item id="robotAsset" src="./Robot%20Fros.glb"></a-asset-item>
+      <img id="faceTexture" src="./canonical_face_model_uv_visualization.png" crossorigin="anonymous">
     </a-assets>
     <a-camera active="false" position="0 0 0"></a-camera>
     <a-entity id="faceAnchor" mindar-face-target="anchorIndex: 168">
@@ -62,60 +62,43 @@
     </a-entity>
   </a-scene>
 
-  <script>
+    <script>
     (() => {
       const status = document.getElementById('status');
-      const robot = document.getElementById('robot');
+      const faceMesh = document.getElementById('faceMesh');
       const scene = document.querySelector('a-scene');
-      const defaults = { scale: 0.25, posY: 0, posZ: 0, rotX: 0, rotY: 0, rotZ: 0 };
-      const ids = Object.keys(defaults);
+      const opacity = document.getElementById('opacity');
+      const opacityVal = document.getElementById('opacityVal');
+      const texture = document.getElementById('faceTexture');
 
-      function applyControls() {
-        const v = {};
-        for (const id of ids) {
-          const el = document.getElementById(id);
-          v[id] = Number(el.value);
-          document.getElementById(id + 'Val').textContent =
-            id === 'scale' ? v[id].toFixed(2) :
-            (id.startsWith('rot') ? Math.round(v[id]) + '°' : v[id].toFixed(2));
-        }
-        robot.setAttribute('scale', `${v.scale} ${v.scale} ${v.scale}`);
-        robot.setAttribute('position', `0 ${v.posY} ${v.posZ}`);
-        robot.setAttribute('rotation', `${v.rotX} ${v.rotY} ${v.rotZ}`);
+      function applyOpacity() {
+        const value = Number(opacity.value);
+        opacityVal.textContent = value.toFixed(2);
+        faceMesh.setAttribute('material', 'opacity', value);
       }
-      ids.forEach(id => document.getElementById(id).addEventListener('input', applyControls));
+      opacity.addEventListener('input', applyOpacity);
       document.getElementById('reset').addEventListener('click', () => {
-        for (const id of ids) document.getElementById(id).value = defaults[id];
-        applyControls();
+        opacity.value = '1';
+        applyOpacity();
       });
-      document.getElementById('hidePanel').addEventListener('click', () => {
-        document.getElementById('panel').style.display = 'none';
-        document.getElementById('showPanel').style.display = 'block';
-      });
-      document.getElementById('showPanel').addEventListener('click', () => {
-        document.getElementById('panel').style.display = 'block';
-        document.getElementById('showPanel').style.display = 'none';
-      });
-      robot.addEventListener('model-loaded', () => {
-        robot.setAttribute('visible', true);
-        status.textContent = 'โหลด Robot Fros.glb สำเร็จ · กำลังติดตามใบหน้า';
+      texture.addEventListener('load', () => {
+        status.textContent = 'โหลดภาพ canonical_face_model_uv_visualization.png สำเร็จ';
         status.style.color = '#a9e7c1';
-        applyControls();
       });
-      robot.addEventListener('model-error', (event) => {
-        status.textContent = 'โหลด Robot Fros.glb ไม่สำเร็จ ตรวจสอบชื่อไฟล์และการโหลดไฟล์จาก GitHub Pages';
+      texture.addEventListener('error', () => {
+        status.textContent = 'โหลดภาพ Texture ไม่สำเร็จ ตรวจสอบว่าไฟล์ PNG อยู่ในโฟลเดอร์หลักของ Repository';
         status.style.color = '#ffaaa5';
-        console.error('Robot model load error:', event);
       });
       scene.addEventListener('arReady', () => {
-        if (robot.getObject3D('mesh')) status.textContent = 'กล้องพร้อมใช้งาน · กำลังติดตามใบหน้า';
+        status.textContent = 'กล้องพร้อมใช้งาน · Face Mesh กำลังติดตามใบหน้า';
+        status.style.color = '#a9e7c1';
       });
       scene.addEventListener('arError', (event) => {
         status.textContent = 'เริ่มระบบ AR ไม่สำเร็จ กรุณาอนุญาตกล้องและเปิดผ่าน HTTPS หรือ localhost';
         status.style.color = '#ffaaa5';
         console.error('MindAR error:', event);
       });
-      applyControls();
+      applyOpacity();
     })();
   </script>
 </body>
