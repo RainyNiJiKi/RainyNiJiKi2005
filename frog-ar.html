@@ -1,0 +1,50 @@
+```html
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frog Image AR</title>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+</head>
+
+<body style="margin: 0; overflow: hidden;">
+
+  <a-scene
+    mindar-image="imageTargetSrc: ./frog-target.mind;"
+    color-space="sRGB"
+    renderer="colorManagement: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets timeout="30000">
+      <a-asset-item
+        id="birdModel"
+        src="https://raw.githubusercontent.com/RainyNiJiKi/RainyNiJiKi2005/main/bird_orange.glb">
+      </a-asset-item>
+    </a-assets>
+
+    <!-- ภาพเป้าหมายกบ -->
+    <a-entity mindar-image-target="targetIndex: 0">
+
+      <a-gltf-model
+        src="#birdModel"
+        position="0 0 0.1"
+        rotation="0 0 0"
+        scale="0.15 0.15 0.15">
+      </a-gltf-model>
+
+    </a-entity>
+
+    <a-camera
+      position="0 0 0"
+      look-controls="enabled: false">
+    </a-camera>
+
+  </a-scene>
+
+</body>
+</html>
+```
